@@ -148,6 +148,9 @@ function MainApp({ user }: { user: User }) {
   // Custom Confirmation Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
+  // Fullscreen Image Modal State
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+
   const askConfirmation = (title: string, message: string, onConfirm: () => void) => {
     setConfirmDialog({ title, message, onConfirm });
   };
@@ -1961,6 +1964,7 @@ function MainApp({ user }: { user: User }) {
                             onEdit={handleEditInstanceTrigger}
                             onArchive={handleArchiveInstance}
                             onAddAnother={handleAddAnotherInstanceTrigger}
+                            onImageClick={setFullscreenImage}
                           />
                         </div>
                       ))}
@@ -2050,6 +2054,7 @@ function MainApp({ user }: { user: User }) {
                                 onEdit={handleEditInstanceTrigger}
                                 onArchive={handleArchiveInstance}
                                 onAddAnother={handleAddAnotherInstanceTrigger}
+                                onImageClick={setFullscreenImage}
                               />
                             </div>
                           ))}
@@ -2105,7 +2110,8 @@ function MainApp({ user }: { user: User }) {
                   referrerPolicy="no-referrer"
                   src={selectedDetailProduct.photo} 
                   alt={selectedDetailProduct.name}
-                  className="w-14 h-18 rounded-xl object-cover border border-retro-text/10 shadow-sm"
+                  onClick={() => setFullscreenImage(selectedDetailProduct.photo!)}
+                  className="w-14 h-18 rounded-xl object-cover border border-retro-text/10 shadow-sm cursor-pointer hover:scale-105 transition-transform"
                 />
               ) : (
                 <div className="w-14 h-18 rounded-xl bg-retro-primary/10 border border-dashed border-retro-primary/30 flex items-center justify-center text-retro-primary flex-shrink-0">
@@ -2538,6 +2544,28 @@ function MainApp({ user }: { user: User }) {
           </div>
         </div>
       )}
+
+      {/* ==================== 10. Fullscreen Image Modal ==================== */}
+      {fullscreenImage && (
+        <div 
+          className="fixed inset-0 bg-stone-900/90 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-fade-in cursor-zoom-out"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <img 
+            referrerPolicy="no-referrer"
+            src={fullscreenImage} 
+            alt="Fullscreen preview" 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button 
+            className="absolute top-4 right-4 sm:top-8 sm:right-8 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+            onClick={() => setFullscreenImage(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -2548,13 +2576,15 @@ function ProductCard({
   onViewDetail,
   onEdit, 
   onArchive,
-  onAddAnother
+  onAddAnother,
+  onImageClick
 }: { 
   product: Product; 
   onViewDetail: (prod: Product) => void; 
   onEdit: (prod: Product, inst: ProductInstance) => void;
   onArchive: (prodId: string, instId: string) => void;
   onAddAnother: (prod: Product) => void;
+  onImageClick?: (url: string) => void;
 }) {
   const instances = product.instances;
   const isArchived = product.status === 'archived';
@@ -2590,6 +2620,12 @@ function ProductCard({
             referrerPolicy="no-referrer"
             src={product.photo} 
             alt={product.name}
+            onClick={(e) => {
+              if (onImageClick) {
+                e.stopPropagation();
+                onImageClick(product.photo!);
+              }
+            }}
             className="w-11 h-14 rounded-lg object-cover border border-retro-text/10 shadow-sm group-hover:scale-105 transition-transform"
           />
         ) : (
