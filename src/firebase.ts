@@ -3,19 +3,21 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDZrfhFTCc0rdLrFoFQ_Pd29wmW0uz4If4",
-  authDomain: "project-d8904b8a-1715-4363-9d7.firebaseapp.com",
-  projectId: "project-d8904b8a-1715-4363-9d7",
-  storageBucket: "project-d8904b8a-1715-4363-9d7.firebasestorage.app",
-  messagingSenderId: "969183701633",
-  appId: "1:969183701633:web:a71255a8ca047e7aae7b80",
+  apiKey: "AIzaSyAqSxxH5LhsKSV2NPDzQFOSHn_rQNv588k",
+  authDomain: "url-sorting.firebaseapp.com",
+  databaseURL: "https://url-sorting-default-rtdb.firebaseio.com",
+  projectId: "url-sorting",
+  storageBucket: "url-sorting.firebasestorage.app",
+  messagingSenderId: "576779796443",
+  appId: "1:576779796443:web:ff98b5b55049f7b7e0f1fe",
+  measurementId: "G-0L44SJTSLQ"
 };
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Initialize Firestore with the specific databaseId
-export const db = getFirestore(app, "ai-studio-32aa47a8-0e63-408a-8fbb-30e15376d9e0");
+// Initialize default Firestore
+export const db = getFirestore(app);
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
