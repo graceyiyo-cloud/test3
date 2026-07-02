@@ -126,31 +126,39 @@ function MainApp({ user }: { user: User }) {
         const productsRef = collection(db, 'users', user.uid, 'products');
         const snapshot = await getDocs(productsRef);
         
-        const existingIds = new Set(snapshot.docs.map(d => d.id));
+        const existingData = new Map();
+        snapshot.forEach(d => existingData.set(d.id, d.data()));
+        
         const currentIds = new Set(products.map(p => p.id));
         
         const writePromises = [];
         
-        for (const id of existingIds) {
+        for (const id of existingData.keys()) {
           if (!currentIds.has(id)) {
             writePromises.push(deleteDoc(doc(db, 'users', user.uid, 'products', id)));
           }
         }
         
         for (const product of products) {
-          writePromises.push(setDoc(doc(db, 'users', user.uid, 'products', product.id), product));
+          const existing = existingData.get(product.id);
+          // Only write if it's new or the data has changed
+          if (!existing || JSON.stringify(existing) !== JSON.stringify(product)) {
+            writePromises.push(setDoc(doc(db, 'users', user.uid, 'products', product.id), product));
+          }
         }
 
-        await Promise.all(writePromises);
+        if (writePromises.length > 0) {
+          await Promise.all(writePromises);
+        }
 
         // Migration: Remove the old `products` array from the user doc to free up the 1MB limit
         await updateDoc(userRef, {
           products: deleteField()
         }).catch(() => { /* ignore if field doesn't exist */ });
 
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error saving data', err);
-        setToastMessage('儲存失敗，請確認資料庫權限或網路連線。');
+        setToastMessage(`儲存失敗: ${err.message || String(err)}`);
       }
     };
     saveUserData();
