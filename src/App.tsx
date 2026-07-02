@@ -37,11 +37,45 @@ import {
 } from 'lucide-react';
 import { Category, Product, ProductInstance } from './types';
 import { INITIAL_CATEGORIES, INITIAL_PRODUCTS } from './data';
+import Cropper from 'react-easy-crop';
 import { 
   calculateDaysToExpiry, 
   calculatePaoExpiry, 
   checkAllOpenedExpiredProducts 
 } from './utils';
+
+// Helper function to extract cropped image as base64
+const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
+  const image = new Image();
+  image.src = imageSrc;
+  await new Promise((resolve) => {
+    image.onload = resolve;
+  });
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('No 2d context');
+  }
+
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  return canvas.toDataURL('image/jpeg', 0.8);
+};
 
 // Helper component to render icons based on category settings
 const IconMap: Record<string, LucideIcon> = {
@@ -212,6 +246,13 @@ function MainApp({ user }: { user: User }) {
   // Fullscreen Image Modal State
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
+  // Cropper States
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [isCroppingFormPhoto, setIsCroppingFormPhoto] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
   const askConfirmation = (title: string, message: string, onConfirm: () => void) => {
     setConfirmDialog({ title, message, onConfirm });
   };
@@ -302,68 +343,94 @@ function MainApp({ user }: { user: User }) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
-        
-        // 建立 Image 物件進行圖片壓縮，避免超過 Firestore 1MB 限制
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // 壓縮為 JPEG，品質 0.7
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-
-          if (isFormPhoto) {
-            // Upload to Firebase Storage
-            const uploadToStorage = async () => {
-              if (!user) {
-                setToastMessage('請先登入');
-                return;
-              }
-              setIsAnalyzing(true);
-              setToastMessage('上傳圖片中...');
-              try {
-                const storageRef = ref(storage, `users/${user.uid}/products/${Date.now()}.jpg`);
-                await uploadString(storageRef, compressedBase64, 'data_url');
-                const downloadURL = await getDownloadURL(storageRef);
-                setFormPhoto(downloadURL);
-                setToastMessage('圖片上傳成功');
-              } catch (error: any) {
-                console.error('Upload error:', error);
-                setToastMessage(`圖片上傳失敗: ${error.message}`);
-              } finally {
-                setIsAnalyzing(false);
-              }
-            };
-            uploadToStorage();
-          } else {
-            // Camera scan trigger
-            triggerAiScan(compressedBase64, 'image/jpeg');
-          }
-        };
-        img.src = result;
+        setCropImageSrc(result);
+        setIsCroppingFormPhoto(isFormPhoto);
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleCropConfirm = async () => {
+    if (!cropImageSrc || !croppedAreaPixels) return;
+    
+    try {
+      const croppedBase64 = await getCroppedImg(cropImageSrc, croppedAreaPixels);
+      
+      // Close cropper modal
+      setCropImageSrc(null);
+      setCroppedAreaPixels(null);
+
+      // Now do the same resize logic as before if needed, or just upload the cropped image directly
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Compress as JPEG
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+        if (isCroppingFormPhoto) {
+          // Upload to Firebase Storage
+          const uploadToStorage = async () => {
+            if (!user) {
+              setToastMessage('請先登入');
+              return;
+            }
+            setIsAnalyzing(true);
+            setToastMessage('上傳圖片中...');
+            try {
+              const storageRef = ref(storage, `users/${user.uid}/products/${Date.now()}.jpg`);
+              await uploadString(storageRef, compressedBase64, 'data_url');
+              const downloadURL = await getDownloadURL(storageRef);
+              setFormPhoto(downloadURL);
+              setToastMessage('圖片上傳成功');
+            } catch (error: any) {
+              console.error('Upload error:', error);
+              setToastMessage(`圖片上傳失敗: ${error.message}`);
+            } finally {
+              setIsAnalyzing(false);
+            }
+          };
+          uploadToStorage();
+        } else {
+          // Camera scan trigger
+          triggerAiScan(compressedBase64, 'image/jpeg');
+        }
+      };
+      img.src = croppedBase64;
+    } catch (e) {
+      console.error(e);
+      showToast('圖片裁切失敗');
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropImageSrc(null);
+    setCroppedAreaPixels(null);
   };
 
   // --- API Call: Gemini Web Search & Image Recognition ---
@@ -2655,6 +2722,54 @@ function MainApp({ user }: { user: User }) {
                 className="flex-1 py-2 bg-retro-primary hover:opacity-90 text-retro-card font-extrabold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
               >
                 確定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== Image Cropper Modal ==================== */}
+      {cropImageSrc && (
+        <div className="fixed inset-0 bg-stone-900/95 backdrop-blur-md z-[120] flex flex-col items-center justify-center animate-fade-in">
+          <div className="relative w-full h-[60vh] sm:h-[70vh] bg-black">
+            <Cropper
+              image={cropImageSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              onCropChange={setCrop}
+              onCropComplete={onCropComplete}
+              onZoomChange={setZoom}
+            />
+          </div>
+          <div className="p-6 w-full max-w-md space-y-4">
+            <div className="flex items-center gap-4 text-white">
+              <span className="text-sm font-medium whitespace-nowrap">縮放</span>
+              <input
+                type="range"
+                value={zoom}
+                min={1}
+                max={3}
+                step={0.1}
+                aria-labelledby="Zoom"
+                onChange={(e) => {
+                  setZoom(Number(e.target.value))
+                }}
+                className="flex-1 accent-retro-primary"
+              />
+            </div>
+            <div className="flex gap-4">
+              <button 
+                className="flex-1 py-3 rounded-xl border border-white/20 text-white font-bold tracking-wider hover:bg-white/10 transition-colors"
+                onClick={handleCropCancel}
+              >
+                取消
+              </button>
+              <button 
+                className="flex-1 py-3 rounded-xl bg-retro-primary text-white font-bold tracking-wider hover:brightness-110 transition-all shadow-lg"
+                onClick={handleCropConfirm}
+              >
+                確認裁切
               </button>
             </div>
           </div>
