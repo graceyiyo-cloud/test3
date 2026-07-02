@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, signInWithGoogle, logOut } from './firebase';
 import { 
   Sparkles, 
   Droplets, 
@@ -55,17 +58,50 @@ function CategoryIcon({ name, className = "w-5 h-5" }: { name: string; className
   return <IconComponent className={className} />;
 }
 
-export default function App() {
+function MainApp({ user }: { user: User }) {
   // --- Core State ---
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('cosmetics_categories');
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-  });
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
 
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('cosmetics_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  // Load user data from Firestore on mount
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const docRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.categories) setCategories(data.categories);
+          if (data.products) setProducts(data.products);
+        }
+      } catch (err) {
+        console.error('Error loading data', err);
+      } finally {
+        setIsDataLoaded(true);
+      }
+    };
+    loadUserData();
+  }, [user.uid]);
+
+  // Save to Firestore whenever data changes (debounce or just save directly since it's simple)
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    const saveUserData = async () => {
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          categories,
+          products,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error('Error saving data', err);
+      }
+    };
+    saveUserData();
+  }, [categories, products, isDataLoaded, user.uid]);
 
   const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
     return localStorage.getItem('cosmetics_gemini_api_key') || '';
@@ -118,6 +154,7 @@ export default function App() {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   // --- Setting View States ---
+  const [settingsView, setSettingsView] = useState<'menu' | 'apikey' | 'category' | 'history'>('menu');
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('sparkles');
   const [activeCategoryForSub, setActiveCategoryForSub] = useState<string | null>(null);
@@ -149,11 +186,6 @@ export default function App() {
 
   // --- Side Effects & Persistence ---
   useEffect(() => {
-    localStorage.setItem('cosmetics_categories', JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem('cosmetics_products', JSON.stringify(products));
     // Re-evaluate expired PAO products whenever products change
     const expired = checkAllOpenedExpiredProducts(products);
     setExpiredPaoItems(expired);
@@ -594,6 +626,9 @@ export default function App() {
     setCurrentTab(tabId);
     setShowAddForm(false);
     clearForm();
+    if (tabId === 'settings') {
+      setSettingsView('menu');
+    }
   };
 
   const handleFormSave = (e: React.FormEvent) => {
@@ -1494,14 +1529,60 @@ export default function App() {
         {/* 6. Active Tab Product List / Settings Screen */}
         {currentTab === 'settings' ? (
           /* =================== SETTINGS VIEW =================== */
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold font-display flex items-center gap-2 text-retro-text">
-              <Settings className="w-5 h-5 text-retro-primary" />
-              設定與分類管理
-            </h2>
+          <div className="space-y-6 pb-20">
+            {settingsView === 'menu' && (
+              <div className="space-y-4 animate-fade-in">
+                <h2 className="text-xl font-bold font-display flex items-center gap-2 text-retro-text mb-4">
+                  <Settings className="w-5 h-5 text-retro-primary" />
+                  設定與分類管理
+                </h2>
+                <div className="grid grid-cols-1 gap-3">
+                  <button onClick={() => setSettingsView('apikey')} className="p-4 bg-white border border-retro-text/10 rounded-2xl shadow-sm hover:border-retro-primary/50 transition-all flex items-center justify-between group cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-retro-primary/10 flex items-center justify-center text-retro-primary">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-retro-text text-sm">設定 Gemini API 金鑰</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-retro-text/30 group-hover:text-retro-primary group-hover:translate-x-1 transition-all" />
+                  </button>
 
-            {/* Requirement 2: API KEY INPUT */}
-            <div className="p-5 bg-retro-card rounded-2xl border border-retro-text/10 shadow-sm space-y-3">
+                  <button onClick={() => setSettingsView('category')} className="p-4 bg-white border border-retro-text/10 rounded-2xl shadow-sm hover:border-retro-primary/50 transition-all flex items-center justify-between group cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-retro-secondary/10 flex items-center justify-center text-retro-secondary">
+                        <ListTree className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-retro-text text-sm">設定與管理分類</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-retro-text/30 group-hover:text-retro-primary group-hover:translate-x-1 transition-all" />
+                  </button>
+
+                  <button onClick={() => setSettingsView('history')} className="p-4 bg-white border border-retro-text/10 rounded-2xl shadow-sm hover:border-retro-primary/50 transition-all flex items-center justify-between group cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
+                        <Archive className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-retro-text text-sm">歷史封存紀錄</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-retro-text/30 group-hover:text-retro-primary group-hover:translate-x-1 transition-all" />
+                  </button>
+
+                  <div className="pt-4 border-t border-retro-text/10 mt-4">
+                    <button onClick={logOut} className="w-full p-4 bg-red-50 border border-red-100 rounded-2xl shadow-sm hover:border-red-200 transition-all flex items-center justify-center group cursor-pointer">
+                      <span className="font-bold text-red-600 text-sm">登出帳號</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {settingsView === 'apikey' && (
+              <div className="space-y-4 animate-fade-in">
+                <button onClick={() => setSettingsView('menu')} className="text-xs font-bold text-retro-text/50 hover:text-retro-primary flex items-center gap-1 transition-colors cursor-pointer mb-2">
+                  <ChevronDown className="w-4 h-4 rotate-90" /> 返回設定選單
+                </button>
+                {/* Requirement 2: API KEY INPUT */}
+                <div className="p-5 bg-retro-card rounded-2xl border border-retro-text/10 shadow-sm space-y-3">
               <h3 className="text-sm font-bold text-retro-secondary flex items-center gap-1.5">
                 <Sparkles className="w-4.5 h-4.5" />
                 Gemini AI 金鑰設定
@@ -1535,10 +1616,17 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </div>
+          )}
 
-            {/* Requirement 1: EDIT CATEGORY & SUBCATEGORY NESTED LIST */}
-            <div className="p-5 bg-retro-card rounded-2xl border border-retro-text/10 shadow-sm space-y-4">
-              <div className="flex justify-between items-center">
+            {settingsView === 'category' && (
+              <div className="space-y-4 animate-fade-in">
+                <button onClick={() => setSettingsView('menu')} className="text-xs font-bold text-retro-text/50 hover:text-retro-primary flex items-center gap-1 transition-colors cursor-pointer mb-2">
+                  <ChevronDown className="w-4 h-4 rotate-90" /> 返回設定選單
+                </button>
+                {/* Requirement 1: EDIT CATEGORY & SUBCATEGORY NESTED LIST */}
+                <div className="p-5 bg-retro-card rounded-2xl border border-retro-text/10 shadow-sm space-y-4">
+                  <div className="flex justify-between items-center">
                 <h3 className="text-sm font-bold text-retro-secondary flex items-center gap-1.5">
                   <ListTree className="w-4.5 h-4.5" />
                   大分類與小分類管理
@@ -1734,64 +1822,70 @@ export default function App() {
                 </div>
               </div>
             </div>
+            </div>
+            )}
+
+            {settingsView === 'history' && (
+              <div className="space-y-4 animate-fade-in">
+                <button onClick={() => setSettingsView('menu')} className="text-xs font-bold text-retro-text/50 hover:text-retro-primary flex items-center gap-1 transition-colors cursor-pointer mb-2">
+                  <ChevronDown className="w-4 h-4 rotate-90" /> 返回設定選單
+                </button>
+                <div className="mb-1 bg-retro-card/40 px-3.5 py-2.5 rounded-xl border border-retro-text/5 text-xs text-retro-text font-bold flex items-center justify-between">
+                  <span>歷史封存紀錄</span>
+                  <span className="text-retro-secondary bg-retro-secondary/10 px-2 py-0.5 rounded-full">
+                    {products.filter(p => p.status === 'archived').length} 件
+                  </span>
+                </div>
+                
+                {(() => {
+                  const archivedProducts = products.filter(p => p.status === 'archived' && (searchKeyword ? p.name.includes(searchKeyword) || p.brand.includes(searchKeyword) : true));
+                  if (archivedProducts.length === 0) {
+                    return (
+                      <div className="text-center py-12 bg-retro-card rounded-2xl border border-retro-text/5">
+                        <p className="text-sm text-retro-text/50 font-medium">尚無符合的封存商品</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {archivedProducts.map(prod => (
+                        <div key={prod.id}>
+                          <ProductCard 
+                            product={prod} 
+                            onViewDetail={setSelectedDetailProduct}
+                            onEdit={handleEditInstanceTrigger}
+                            onArchive={handleArchiveInstance}
+                            onAddAnother={handleAddAnotherInstanceTrigger}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         ) : (
           /* =================== MAIN LIST VIEW =================== */
           <div className="space-y-4">
             {/* Category Stats Indicator */}
-            {currentTab !== 'history' && (
-              <div className="flex justify-between items-center mb-1 bg-retro-card/40 px-3.5 py-2.5 rounded-xl border border-retro-text/5 text-xs text-retro-text">
-                <span className="font-bold text-retro-text/80">
-                  分類：{categories.find(c => c.id === currentTab)?.name || ''}
-                </span>
-                <span className="font-semibold text-retro-text/70 flex items-center gap-1">
-                  <span>共 {getCategoryStats(currentTab).count} 品項</span>
-                  <span className="text-retro-text/30">|</span>
-                  <Package className="w-3.5 h-3.5 text-retro-primary" />
-                  <span>總庫存 {getCategoryStats(currentTab).qty}</span>
-                </span>
-              </div>
-            )}
-
-            {currentTab === 'history' ? (
-              <div className="mb-1 bg-retro-card/40 px-3.5 py-2.5 rounded-xl border border-retro-text/5 text-xs text-retro-text font-bold">
-                歷史封存紀錄 ({products.filter(p => p.status === 'archived').length} 件)
-              </div>
-            ) : null}
+            <div className="flex justify-between items-center mb-1 bg-retro-card/40 px-3.5 py-2.5 rounded-xl border border-retro-text/5 text-xs text-retro-text">
+              <span className="font-bold text-retro-text/80">
+                分類：{categories.find(c => c.id === currentTab)?.name || ''}
+              </span>
+              <span className="font-semibold text-retro-text/70 flex items-center gap-1">
+                <span>共 {getCategoryStats(currentTab).count} 品項</span>
+                <span className="text-retro-text/30">|</span>
+                <Package className="w-3.5 h-3.5 text-retro-primary" />
+                <span>總庫存 {getCategoryStats(currentTab).qty}</span>
+              </span>
+            </div>
 
             {/* Subcategory Nested Product List */}
             {(() => {
               // Get subcategories of current category
               const currentCatObj = categories.find(c => c.id === currentTab);
               
-              if (currentTab === 'history') {
-                // For history tab, we don't need subcategory grouping
-                const archivedProducts = activeProducts;
-                if (archivedProducts.length === 0) {
-                  return (
-                    <div className="text-center py-12 bg-retro-card rounded-2xl border border-retro-text/5">
-                      <p className="text-sm text-retro-text/50 font-medium">尚無封存商品</p>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="space-y-3">
-                    {archivedProducts.map(prod => (
-                      <div key={prod.id}>
-                        <ProductCard 
-                          product={prod} 
-                          onViewDetail={setSelectedDetailProduct}
-                          onEdit={handleEditInstanceTrigger}
-                          onArchive={handleArchiveInstance}
-                          onAddAnother={handleAddAnotherInstanceTrigger}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-
               // Normal Category Tab with nested subcategory views
               if (!currentCatObj) return null;
               
@@ -1877,14 +1971,6 @@ export default function App() {
             <span className="truncate max-w-[56px]">{cat.name}</span>
           </button>
         ))}
-        {/* Fixed History Tab */}
-        <button 
-          onClick={() => handleTabChange('history')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-bold min-w-[56px] transition-colors py-1 px-1.5 rounded-lg active:bg-retro-bg/40 ${currentTab === 'history' ? 'text-retro-secondary bg-retro-secondary/5' : 'text-retro-text/50'}`}
-        >
-          <Archive className="w-5 h-5" />
-          <span>歷史封存</span>
-        </button>
         {/* Fixed Settings Tab */}
         <button 
           onClick={() => handleTabChange('settings')}
@@ -2120,27 +2206,40 @@ export default function App() {
                 </div>
               ) : (
                 /* Tab 2 Content: 購買紀錄 */
-                <div className="space-y-4 animate-fade-in">
-                  <div className="bg-stone-50 px-3 py-2.5 rounded-xl border border-retro-text/5 flex justify-between items-center">
-                    <span className="text-xs font-bold text-retro-text/60">購買明細筆數</span>
-                    <span className="text-sm font-extrabold text-retro-secondary font-mono">
-                      總筆數：{selectedDetailProduct.instances.length} 筆
-                    </span>
-                  </div>
+                (() => {
+                  const allPurchaseInstances = products
+                    .filter(p => p.brand === selectedDetailProduct.brand && p.name === selectedDetailProduct.name)
+                    .flatMap(p => p.instances.map(inst => ({ ...inst, isArchived: p.status === 'archived' })))
+                    .sort((a, b) => {
+                      if (a.purchaseDate && b.purchaseDate) {
+                        return new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime();
+                      }
+                      return 0;
+                    });
 
-                  <div className="space-y-3">
-                    <span className="text-[11px] font-extrabold text-retro-text/50 uppercase tracking-wider block">
-                      🛒 每一筆的購買明細紀錄
-                    </span>
-                    {selectedDetailProduct.instances.map((inst, index) => {
-                      const hasPurchaseInfo = inst.purchaseDate || inst.purchasePlace || inst.price !== undefined;
+                  return (
+                    <div className="space-y-4 animate-fade-in">
+                      <div className="bg-stone-50 px-3 py-2.5 rounded-xl border border-retro-text/5 flex justify-between items-center">
+                        <span className="text-xs font-bold text-retro-text/60">購買明細筆數</span>
+                        <span className="text-sm font-extrabold text-retro-secondary font-mono">
+                          總筆數：{allPurchaseInstances.length} 筆
+                        </span>
+                      </div>
 
-                      return (
-                        <div key={inst.id} className="p-3 bg-white border border-retro-text/5 rounded-xl space-y-2 shadow-xs">
-                          <div className="flex justify-between items-center border-b border-stone-100 pb-1.5">
-                            <span className="text-xs font-extrabold text-retro-secondary">
-                              明細 #{index + 1} ({inst.capacity || '無容量規格'})
-                            </span>
+                      <div className="space-y-3">
+                        <span className="text-[11px] font-extrabold text-retro-text/50 uppercase tracking-wider block">
+                          🛒 每一筆的購買明細紀錄 (含封存)
+                        </span>
+                        {allPurchaseInstances.map((inst, index) => {
+                          const hasPurchaseInfo = inst.purchaseDate || inst.purchasePlace || inst.price !== undefined;
+
+                          return (
+                            <div key={inst.id} className={`p-3 bg-white border border-retro-text/5 rounded-xl space-y-2 shadow-xs ${inst.isArchived ? 'opacity-70 grayscale' : ''}`}>
+                              <div className="flex justify-between items-center border-b border-stone-100 pb-1.5">
+                                <span className="text-xs font-extrabold text-retro-secondary flex items-center gap-1.5">
+                                  明細 #{allPurchaseInstances.length - index} ({inst.capacity || '無容量規格'})
+                                  {inst.isArchived && <span className="bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded text-[9px]">已封存</span>}
+                                </span>
                             <span className="text-[10px] font-bold bg-stone-100 text-stone-500 px-2 py-0.5 rounded">
                               數量: {inst.qty}
                             </span>
@@ -2177,8 +2276,9 @@ export default function App() {
                     </p>
                   </div>
                 </div>
-              )}
-            </div>
+              );
+            })()
+            )}
             
             {/* Quick add instance footer */}
             {selectedDetailProduct.status !== 'archived' && (
@@ -2197,6 +2297,7 @@ export default function App() {
             )}
           </div>
         </div>
+      </div>
       )}
 
       {/* ==================== 9. Custom Confirmation Dialog (Requirement 2: Resolve iframe window.confirm blocks) ==================== */}
@@ -2253,14 +2354,19 @@ function ProductCard({
 
   // Find standard shortest expiry days to show on outer circle badge
   let minDaysToExpiry = 9999;
+  let closestExpiryDate = '';
   instances.forEach(inst => {
     const days = calculateDaysToExpiry(inst.expiry);
-    if (days < minDaysToExpiry) minDaysToExpiry = days;
+    if (days < minDaysToExpiry) {
+      minDaysToExpiry = days;
+      closestExpiryDate = inst.expiry;
+    }
   });
 
   // Calculate standard warning styles
   const isUrgent = minDaysToExpiry <= 60;
   const totalQty = instances.reduce((sum, inst) => sum + inst.qty, 0);
+  const hasInUse = instances.some(inst => inst.usage === '使用中');
 
   return (
     <div 
@@ -2285,7 +2391,8 @@ function ProductCard({
 
         {/* Titles */}
         <div className="flex flex-col justify-start min-w-0 flex-1">
-          <span className="text-[10px] font-bold text-retro-secondary tracking-wider uppercase truncate">
+          <span className="text-[10px] font-bold text-retro-secondary tracking-wider uppercase truncate flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${hasInUse ? 'bg-green-500 animate-pulse' : 'bg-stone-300'}`}></span>
             {product.brand}
           </span>
           <span className="text-sm font-bold font-display text-retro-text leading-snug truncate group-hover:text-retro-primary transition-colors mt-0.5">
@@ -2314,6 +2421,11 @@ function ProductCard({
             </span>
             <span className="text-[8px] text-retro-text/50 font-bold mt-0.5">天到期</span>
           </div>
+          {minDaysToExpiry !== 9999 && closestExpiryDate && (
+            <span className="text-[9px] font-bold text-retro-text/40 mt-1">
+              {closestExpiryDate.replace(/-/g, '/')}
+            </span>
+          )}
         </div>
         <ChevronRight className="w-4 h-4 text-stone-300 group-hover:text-retro-primary group-hover:translate-x-0.5 transition-all" />
       </div>
@@ -2338,4 +2450,58 @@ function ClockIcon({ className = "w-4 h-4" }: { className?: string }) {
       <polyline points="12 6 12 12 16 14" />
     </svg>
   );
+}
+
+export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-retro-bg flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <Sparkles className="w-8 h-8 text-retro-primary animate-pulse" />
+          <span className="text-retro-text font-bold text-sm tracking-wider uppercase">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-retro-bg flex flex-col items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-retro-text/10 flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-retro-primary/10 rounded-2xl flex items-center justify-center text-retro-primary mb-6">
+            <Sparkles className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-bold font-display text-retro-text mb-2">化妝品管理系統</h1>
+          <p className="text-retro-text/60 text-sm mb-8">
+            精緻復古底片風格的化妝品與保養品庫存管理系統，請登入以存取專屬您的帳號資料。
+          </p>
+          <button
+            onClick={signInWithGoogle}
+            className="w-full flex items-center justify-center gap-3 bg-retro-text text-white py-4 rounded-xl font-bold hover:bg-retro-text/90 transition-all shadow-md active:scale-[0.98]"
+          >
+            <svg viewBox="0 0 24 24" className="w-5 h-5 bg-white rounded-full p-0.5" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            使用 Google 帳號登入
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <MainApp user={user} />;
 }
