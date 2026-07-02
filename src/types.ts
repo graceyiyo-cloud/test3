@@ -14,10 +14,11 @@ export interface ProductInstance {
   id: string;
   qty: number;
   capacity: string;
-  usage: '使用中' | '未開封';
+  usage: '使用中' | '未開封' | '已用完' | '已丟棄';
   expiry: string; // YYYY-MM-DD
   paoMonths?: number; // 開封後可使用月數
   openedDate?: string; // 開封日期 YYYY-MM-DD
+  finishedDate?: string; // 用完或丟棄的日期 YYYY-MM-DD
   purchaseDate?: string; // 購買日期 YYYY-MM-DD
   purchasePlace?: string; // 購買地點
   price?: number; // 單價

@@ -31,6 +31,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   ChevronRight,
+  History,
   LucideIcon
 } from 'lucide-react';
 import { Category, Product, ProductInstance } from './types';
@@ -129,11 +130,12 @@ function MainApp({ user }: { user: User }) {
   const [formQty, setFormQty] = useState(1);
   const [formCapacity, setFormCapacity] = useState('');
   const [formCapacityUnit, setFormCapacityUnit] = useState('ml');
-  const [formUsage, setFormUsage] = useState<'使用中' | '未開封'>('使用中');
+  const [formUsage, setFormUsage] = useState<'使用中' | '未開封' | '已用完' | '已丟棄'>('使用中');
   const [formThreshold, setFormThreshold] = useState<number | string>(0);
   const [formExpiry, setFormExpiry] = useState('');
   const [formPaoMonths, setFormPaoMonths] = useState<string>(''); // PAO 可使用月數
   const [formOpenedDate, setFormOpenedDate] = useState(''); // 開封日期
+  const [formFinishedDate, setFormFinishedDate] = useState(''); // 用完或丟棄的日期
   const [formPhoto, setFormPhoto] = useState<string>(''); // Base64 string
   const [formPurchaseDate, setFormPurchaseDate] = useState('');
   const [formPurchasePlace, setFormPurchasePlace] = useState('');
@@ -141,7 +143,7 @@ function MainApp({ user }: { user: User }) {
 
   // Product Master Detail View State
   const [selectedDetailProduct, setSelectedDetailProduct] = useState<Product | null>(null);
-  const [detailActiveTab, setDetailActiveTab] = useState<'status' | 'purchase'>('status');
+  const [detailActiveTab, setDetailActiveTab] = useState<'status' | 'purchase' | 'usage'>('status');
 
   // Custom Confirmation Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
@@ -215,6 +217,9 @@ function MainApp({ user }: { user: User }) {
   useEffect(() => {
     if (formUsage === '使用中' && !formOpenedDate) {
       setFormOpenedDate(new Date().toISOString().split('T')[0]);
+    }
+    if ((formUsage === '已用完' || formUsage === '已丟棄') && !formFinishedDate) {
+      setFormFinishedDate(new Date().toISOString().split('T')[0]);
     }
   }, [formUsage]);
 
@@ -307,6 +312,7 @@ function MainApp({ user }: { user: User }) {
         setFormExpiry('');
         setFormPaoMonths('');
         setFormOpenedDate(new Date().toISOString().split('T')[0]);
+        setFormFinishedDate('');
 
         setShowAddForm(true);
         showToast('AI 影像辨識成功，已將資料填入表單！');
@@ -619,6 +625,7 @@ function MainApp({ user }: { user: User }) {
     setFormExpiry('');
     setFormPaoMonths('');
     setFormOpenedDate(new Date().toISOString().split('T')[0]);
+    setFormFinishedDate('');
     setFormPhoto('');
     setFormPurchaseDate('');
     setFormPurchasePlace('');
@@ -650,7 +657,8 @@ function MainApp({ user }: { user: User }) {
       subcatValue = '其他';
     }
     const paoVal = formPaoMonths ? parseInt(formPaoMonths) : undefined;
-    const openedVal = formUsage === '使用中' ? formOpenedDate : undefined;
+    const openedVal = (formUsage === '使用中' || formUsage === '已用完' || formUsage === '已丟棄') ? formOpenedDate : undefined;
+    const finishedVal = (formUsage === '已用完' || formUsage === '已丟棄') ? formFinishedDate : undefined;
 
     const purchaseDateVal = formPurchaseDate || undefined;
     const purchasePlaceVal = formPurchasePlace.trim() || undefined;
@@ -707,6 +715,7 @@ function MainApp({ user }: { user: User }) {
                   expiry: formExpiry,
                   paoMonths: paoVal,
                   openedDate: openedVal,
+                  finishedDate: finishedVal,
                   purchaseDate: purchaseDateVal,
                   purchasePlace: purchasePlaceVal,
                   price: priceVal
@@ -748,6 +757,7 @@ function MainApp({ user }: { user: User }) {
           expiry: formExpiry,
           paoMonths: paoVal,
           openedDate: openedVal,
+          finishedDate: finishedVal,
           purchaseDate: purchaseDateVal,
           purchasePlace: purchasePlaceVal,
           price: priceVal
@@ -784,6 +794,7 @@ function MainApp({ user }: { user: User }) {
         expiry: formExpiry,
         paoMonths: paoVal,
         openedDate: openedVal,
+        finishedDate: finishedVal,
         purchaseDate: purchaseDateVal,
         purchasePlace: purchasePlaceVal,
         price: priceVal
@@ -866,6 +877,7 @@ function MainApp({ user }: { user: User }) {
     setFormExpiry(inst.expiry);
     setFormPaoMonths(inst.paoMonths ? String(inst.paoMonths) : '');
     setFormOpenedDate(inst.openedDate || '');
+    setFormFinishedDate(inst.finishedDate || '');
     setFormPhoto(prod.photo || '');
     setFormPurchaseDate(inst.purchaseDate || '');
     setFormPurchasePlace(inst.purchasePlace || '');
@@ -897,6 +909,7 @@ function MainApp({ user }: { user: User }) {
     setFormExpiry('');
     setFormPaoMonths('');
     setFormOpenedDate(new Date().toISOString().split('T')[0]);
+    setFormFinishedDate('');
     setFormPurchaseDate('');
     setFormPurchasePlace('');
     setFormPrice('');
@@ -1450,16 +1463,18 @@ function MainApp({ user }: { user: User }) {
                 <label className="block text-xs font-bold text-retro-text/75 mb-1">使用狀態</label>
                 <select 
                   value={formUsage}
-                  onChange={(e) => setFormUsage(e.target.value as '使用中' | '未開封')}
+                  onChange={(e) => setFormUsage(e.target.value as any)}
                   className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                 >
                   <option value="使用中">使用中</option>
                   <option value="未開封">未開封</option>
+                  <option value="已用完">已用完</option>
+                  <option value="已丟棄">已丟棄</option>
                 </select>
               </div>
 
               {/* Requirement 3: Period After Opening (PAO) & Opening Date fields */}
-              {formUsage === '使用中' && (
+              {(formUsage === '使用中' || formUsage === '已用完' || formUsage === '已丟棄') && (
                 <div className="grid grid-cols-2 gap-3 bg-retro-bg/30 p-3 rounded-xl border border-retro-text/5">
                   <div>
                     <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
@@ -1473,20 +1488,35 @@ function MainApp({ user }: { user: User }) {
                       className="w-full p-2 bg-white border border-retro-text/10 rounded-lg text-xs text-retro-text focus:outline-none focus:border-retro-primary font-semibold"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
-                      <ClockIcon className="w-3.5 h-3.5" />
-                      開封後可使用月數
-                    </label>
-                    <input 
-                      type="number" 
-                      min="1"
-                      placeholder="例如: 6, 12, 24"
-                      value={formPaoMonths}
-                      onChange={(e) => setFormPaoMonths(e.target.value)}
-                      className="w-full p-2 bg-white border border-retro-text/10 rounded-lg text-xs text-retro-text focus:outline-none focus:border-retro-primary font-semibold"
-                    />
-                  </div>
+                  {formUsage === '使用中' ? (
+                    <div>
+                      <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
+                        <ClockIcon className="w-3.5 h-3.5" />
+                        開封後可使用月數
+                      </label>
+                      <input 
+                        type="number" 
+                        min="1"
+                        placeholder="例如: 6, 12, 24"
+                        value={formPaoMonths}
+                        onChange={(e) => setFormPaoMonths(e.target.value)}
+                        className="w-full p-2 bg-white border border-retro-text/10 rounded-lg text-xs text-retro-text focus:outline-none focus:border-retro-primary font-semibold"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
+                        <Calendar className="w-3.5 h-3.5" />
+                        結束日期
+                      </label>
+                      <input 
+                        type="date" 
+                        value={formFinishedDate}
+                        onChange={(e) => setFormFinishedDate(e.target.value)}
+                        className="w-full p-2 bg-white border border-retro-text/10 rounded-lg text-xs text-retro-text focus:outline-none focus:border-retro-primary font-semibold"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2111,11 +2141,11 @@ function MainApp({ user }: { user: User }) {
               </button>
             </div>
 
-            {/* Middle Nav Buttons (Requirement 1: 下方要有小按鈕，第一個：商品數量狀況，第二個：購買紀錄，第三個：編輯這個大品項) */}
-            <div className="p-3 bg-stone-100/50 border-b border-retro-text/5 grid grid-cols-3 gap-2 flex-shrink-0">
+            {/* Middle Nav Buttons */}
+            <div className="p-3 bg-stone-100/50 border-b border-retro-text/5 grid grid-cols-4 gap-2 flex-shrink-0">
               <button
                 onClick={() => setDetailActiveTab('status')}
-                className={`py-2 px-1 text-xs font-bold rounded-xl transition-all border flex flex-col items-center gap-0.5 cursor-pointer ${
+                className={`py-2 px-1 text-[11px] font-bold rounded-xl transition-all border flex flex-col items-center gap-0.5 cursor-pointer ${
                   detailActiveTab === 'status'
                     ? 'bg-retro-primary text-retro-card border-retro-primary shadow-sm scale-[1.02]'
                     : 'bg-white text-retro-text/60 border-retro-text/5 hover:text-retro-text hover:bg-stone-50'
@@ -2127,7 +2157,7 @@ function MainApp({ user }: { user: User }) {
 
               <button
                 onClick={() => setDetailActiveTab('purchase')}
-                className={`py-2 px-1 text-xs font-bold rounded-xl transition-all border flex flex-col items-center gap-0.5 cursor-pointer ${
+                className={`py-2 px-1 text-[11px] font-bold rounded-xl transition-all border flex flex-col items-center gap-0.5 cursor-pointer ${
                   detailActiveTab === 'purchase'
                     ? 'bg-retro-secondary text-retro-card border-retro-secondary shadow-sm scale-[1.02]'
                     : 'bg-white text-retro-text/60 border-retro-text/5 hover:text-retro-text hover:bg-stone-50'
@@ -2138,8 +2168,20 @@ function MainApp({ user }: { user: User }) {
               </button>
 
               <button
+                onClick={() => setDetailActiveTab('usage')}
+                className={`py-2 px-1 text-[11px] font-bold rounded-xl transition-all border flex flex-col items-center gap-0.5 cursor-pointer ${
+                  detailActiveTab === 'usage'
+                    ? 'bg-amber-600 text-retro-card border-amber-600 shadow-sm scale-[1.02]'
+                    : 'bg-white text-retro-text/60 border-retro-text/5 hover:text-retro-text hover:bg-stone-50'
+                }`}
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>使用紀錄</span>
+              </button>
+
+              <button
                 onClick={() => handleEditProductMasterTrigger(selectedDetailProduct)}
-                className="py-2 px-1 text-xs font-bold bg-white text-retro-text/60 hover:text-retro-primary border border-retro-text/5 hover:border-retro-primary/20 rounded-xl transition-all flex flex-col items-center gap-0.5 cursor-pointer"
+                className="py-2 px-1 text-[11px] font-bold bg-white text-retro-text/60 hover:text-retro-primary border border-retro-text/5 hover:border-retro-primary/20 rounded-xl transition-all flex flex-col items-center gap-0.5 cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>編輯大品項</span>
@@ -2285,7 +2327,7 @@ function MainApp({ user }: { user: User }) {
                     })}
                   </div>
                 </div>
-              ) : (
+              ) : detailActiveTab === 'purchase' ? (
                 /* Tab 2 Content: 購買紀錄 */
                 (() => {
                   const allPurchaseInstances = products
@@ -2348,6 +2390,97 @@ function MainApp({ user }: { user: User }) {
                       <p className="text-[10px] text-center text-stone-400 font-semibold pt-1">
                         💡 提示：點擊右上角的編輯圖示（數量狀況頁籤中）即可新增購買紀錄
                       </p>
+                    </div>
+                  );
+                })()
+              ) : (
+                /* Tab 3 Content: 使用紀錄 */
+                (() => {
+                  const allUsageInstances = products
+                    .filter(p => p.brand === selectedDetailProduct.brand && p.name === selectedDetailProduct.name)
+                    .flatMap(p => p.instances)
+                    .filter(inst => inst.usage === '已用完' || inst.usage === '已丟棄' || (inst.usage === '使用中' && inst.openedDate))
+                    .sort((a, b) => {
+                      if (a.openedDate && b.openedDate) {
+                        return new Date(b.openedDate).getTime() - new Date(a.openedDate).getTime();
+                      }
+                      return 0;
+                    });
+
+                  return (
+                    <div className="space-y-4 animate-fade-in">
+                      <div className="bg-stone-50 px-3 py-2.5 rounded-xl border border-retro-text/5 flex justify-between items-center">
+                        <span className="text-xs font-bold text-retro-text/60">使用紀錄筆數</span>
+                        <span className="text-sm font-extrabold text-amber-600 font-mono">
+                          總計：{allUsageInstances.length} 筆
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        <span className="text-[11px] font-extrabold text-retro-text/50 uppercase tracking-wider block">
+                          ⌛ 從開封到用完/丟棄的時間
+                        </span>
+                        
+                        <div className="overflow-hidden rounded-xl border border-retro-text/5 bg-white shadow-xs">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-stone-50 border-b border-retro-text/5 text-[10px] uppercase text-retro-text/50">
+                                <th className="p-2.5 font-bold whitespace-nowrap">狀態</th>
+                                <th className="p-2.5 font-bold whitespace-nowrap">期間</th>
+                                <th className="p-2.5 font-bold text-right whitespace-nowrap">花費時間</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-retro-text/5">
+                              {allUsageInstances.map(inst => {
+                                let durationStr = '-';
+                                if (inst.openedDate) {
+                                  const endD = (inst.usage === '已用完' || inst.usage === '已丟棄') && inst.finishedDate 
+                                    ? new Date(inst.finishedDate) 
+                                    : new Date();
+                                  const startD = new Date(inst.openedDate);
+                                  const diffMs = endD.getTime() - startD.getTime();
+                                  if (diffMs >= 0) {
+                                    const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                    const years = Math.floor(totalDays / 365);
+                                    const months = Math.floor((totalDays % 365) / 30);
+                                    const days = (totalDays % 365) % 30;
+                                    
+                                    const parts = [];
+                                    if (years > 0) parts.push(`${years}年`);
+                                    if (months > 0) parts.push(`${months}個月`);
+                                    if (years === 0 && months === 0) parts.push(`${days}天`);
+                                    durationStr = parts.join('');
+                                  }
+                                }
+                                
+                                return (
+                                  <tr key={inst.id} className={`text-xs text-retro-text`}>
+                                    <td className="p-2.5">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                        inst.usage === '使用中' ? 'bg-green-100 text-green-700' :
+                                        inst.usage === '已用完' ? 'bg-stone-200 text-stone-600' :
+                                        'bg-red-100 text-red-600'
+                                      }`}>
+                                        {inst.usage}
+                                      </span>
+                                    </td>
+                                    <td className="p-2.5 font-mono text-[10px] text-stone-500">
+                                      <div>{inst.openedDate || '-'}</div>
+                                      <div>~ {inst.finishedDate || (inst.usage === '使用中' ? '至今' : '-')}</div>
+                                    </td>
+                                    <td className="p-2.5 font-bold text-right text-amber-600">{durationStr}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                          {allUsageInstances.length === 0 && (
+                            <div className="py-6 text-center text-xs text-stone-400 font-semibold bg-white">
+                              暫無使用紀錄 (需設定開封日期)
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   );
                 })()
