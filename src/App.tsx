@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, getDocs, collection, deleteField, updateDoc, query } from 'firebase/firestore';
 import { auth, db, signInWithGoogle, logOut } from './firebase';
 import { 
   Sparkles, 
@@ -73,11 +73,34 @@ function MainApp({ user }: { user: User }) {
       try {
         const docRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(docRef);
+        let loadedCategories = INITIAL_CATEGORIES;
+        
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.categories) setCategories(data.categories);
-          if (data.products) setProducts(data.products);
+          if (data.categories) {
+            loadedCategories = data.categories;
+            setCategories(data.categories);
+          }
+          
+          // Legacy migration check: if products exist in the root doc, use them initially
+          if (data.products && data.products.length > 0) {
+            setProducts(data.products);
+          }
         }
+        
+        // Load products from subcollection
+        const productsRef = collection(db, 'users', user.uid, 'products');
+        const q = query(productsRef);
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const subProducts: Product[] = [];
+          querySnapshot.forEach((docSnap) => {
+            subProducts.push(docSnap.data() as Product);
+          });
+          setProducts(subProducts);
+        }
+
       } catch (err) {
         console.error('Error loading data', err);
       } finally {
@@ -92,13 +115,42 @@ function MainApp({ user }: { user: User }) {
     if (!isDataLoaded) return;
     const saveUserData = async () => {
       try {
-        await setDoc(doc(db, 'users', user.uid), {
+        const userRef = doc(db, 'users', user.uid);
+        // Save categories to root doc
+        await setDoc(userRef, {
           categories,
-          products,
           updatedAt: new Date().toISOString()
         }, { merge: true });
+
+        // Sync products array to subcollection
+        const productsRef = collection(db, 'users', user.uid, 'products');
+        const snapshot = await getDocs(productsRef);
+        
+        const existingIds = new Set(snapshot.docs.map(d => d.id));
+        const currentIds = new Set(products.map(p => p.id));
+        
+        const writePromises = [];
+        
+        for (const id of existingIds) {
+          if (!currentIds.has(id)) {
+            writePromises.push(deleteDoc(doc(db, 'users', user.uid, 'products', id)));
+          }
+        }
+        
+        for (const product of products) {
+          writePromises.push(setDoc(doc(db, 'users', user.uid, 'products', product.id), product));
+        }
+
+        await Promise.all(writePromises);
+
+        // Migration: Remove the old `products` array from the user doc to free up the 1MB limit
+        await updateDoc(userRef, {
+          products: deleteField()
+        }).catch(() => { /* ignore if field doesn't exist */ });
+
       } catch (err) {
         console.error('Error saving data', err);
+        setToastMessage('儲存失敗，請確認資料庫權限或網路連線。');
       }
     };
     saveUserData();
@@ -240,12 +292,45 @@ function MainApp({ user }: { user: User }) {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (isFormPhoto) {
-          setFormPhoto(reader.result as string);
-        } else {
-          // Camera scan trigger
-          triggerAiScan(reader.result as string, file.type);
-        }
+        const result = reader.result as string;
+        
+        // 建立 Image 物件進行圖片壓縮，避免超過 Firestore 1MB 限制
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // 壓縮為 JPEG，品質 0.7
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+          if (isFormPhoto) {
+            setFormPhoto(compressedBase64);
+          } else {
+            // Camera scan trigger
+            triggerAiScan(compressedBase64, 'image/jpeg');
+          }
+        };
+        img.src = result;
       };
       reader.readAsDataURL(file);
     }
