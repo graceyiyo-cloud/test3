@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, deleteDoc, getDocs, collection, deleteField, updateDoc, query } from 'firebase/firestore';
-import { auth, db, signInWithGoogle, logOut } from './firebase';
+import { auth, db, storage, signInWithGoogle, logOut } from './firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { 
   Sparkles, 
   Droplets, 
@@ -332,7 +333,28 @@ function MainApp({ user }: { user: User }) {
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
           if (isFormPhoto) {
-            setFormPhoto(compressedBase64);
+            // Upload to Firebase Storage
+            const uploadToStorage = async () => {
+              if (!user) {
+                setToastMessage('請先登入');
+                return;
+              }
+              setIsAnalyzing(true);
+              setToastMessage('上傳圖片中...');
+              try {
+                const storageRef = ref(storage, `users/${user.uid}/products/${Date.now()}.jpg`);
+                await uploadString(storageRef, compressedBase64, 'data_url');
+                const downloadURL = await getDownloadURL(storageRef);
+                setFormPhoto(downloadURL);
+                setToastMessage('圖片上傳成功');
+              } catch (error: any) {
+                console.error('Upload error:', error);
+                setToastMessage(`圖片上傳失敗: ${error.message}`);
+              } finally {
+                setIsAnalyzing(false);
+              }
+            };
+            uploadToStorage();
           } else {
             // Camera scan trigger
             triggerAiScan(compressedBase64, 'image/jpeg');
