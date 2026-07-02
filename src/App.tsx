@@ -128,8 +128,9 @@ function MainApp({ user }: { user: User }) {
   const [formSubcategory, setFormSubcategory] = useState('');
   const [formQty, setFormQty] = useState(1);
   const [formCapacity, setFormCapacity] = useState('');
+  const [formCapacityUnit, setFormCapacityUnit] = useState('ml');
   const [formUsage, setFormUsage] = useState<'使用中' | '未開封'>('使用中');
-  const [formThreshold, setFormThreshold] = useState(0);
+  const [formThreshold, setFormThreshold] = useState<number | string>(0);
   const [formExpiry, setFormExpiry] = useState('');
   const [formPaoMonths, setFormPaoMonths] = useState<string>(''); // PAO 可使用月數
   const [formOpenedDate, setFormOpenedDate] = useState(''); // 開封日期
@@ -298,6 +299,7 @@ function MainApp({ user }: { user: User }) {
         // Reset secondary form items
         setFormQty(1);
         setFormCapacity('');
+        setFormCapacityUnit('ml');
         setFormUsage('使用中');
         setFormThreshold(0);
         setFormExpiry('');
@@ -609,6 +611,7 @@ function MainApp({ user }: { user: User }) {
     setFormSubcategory('');
     setFormQty(1);
     setFormCapacity('');
+    setFormCapacityUnit('ml');
     setFormUsage('使用中');
     setFormThreshold(0);
     setFormExpiry('');
@@ -694,9 +697,9 @@ function MainApp({ user }: { user: User }) {
                 return {
                   ...inst,
                   qty: formQty,
-                  capacity: formCapacity.trim(),
+                  capacity: finalCapacity,
                   usage: formUsage,
-                  threshold: formThreshold,
+                  threshold: Number(formThreshold) || 0,
                   expiry: formExpiry,
                   paoMonths: paoVal,
                   openedDate: openedVal,
@@ -736,9 +739,9 @@ function MainApp({ user }: { user: User }) {
         const newInstance: ProductInstance = {
           id: editingInstanceId,
           qty: formQty,
-          capacity: formCapacity.trim(),
+          capacity: finalCapacity,
           usage: formUsage,
-          threshold: formThreshold,
+          threshold: Number(formThreshold) || 0,
           expiry: formExpiry,
           paoMonths: paoVal,
           openedDate: openedVal,
@@ -772,9 +775,9 @@ function MainApp({ user }: { user: User }) {
       const newInstance: ProductInstance = {
         id: `inst_${Date.now()}`,
         qty: formQty,
-        capacity: formCapacity.trim(),
+        capacity: finalCapacity,
         usage: formUsage,
-        threshold: formThreshold,
+        threshold: Number(formThreshold) || 0,
         expiry: formExpiry,
         paoMonths: paoVal,
         openedDate: openedVal,
@@ -841,7 +844,17 @@ function MainApp({ user }: { user: User }) {
     setFormCategory(prod.category);
     setFormSubcategory(prod.subcategory);
     setFormQty(inst.qty);
-    setFormCapacity(inst.capacity);
+    
+    // Parse capacity and unit
+    let cap = inst.capacity || '';
+    let unit = 'ml';
+    if (cap.endsWith('ml')) { unit = 'ml'; cap = cap.slice(0, -2); }
+    else if (cap.endsWith('g')) { unit = 'g'; cap = cap.slice(0, -1); }
+    else if (cap.endsWith('個')) { unit = '個'; cap = cap.slice(0, -1); }
+    else if (cap.endsWith('罐')) { unit = '罐'; cap = cap.slice(0, -1); }
+    setFormCapacity(cap.trim());
+    setFormCapacityUnit(unit);
+
     setFormUsage(inst.usage);
     setFormThreshold(inst.threshold);
     setFormExpiry(inst.expiry);
@@ -870,6 +883,7 @@ function MainApp({ user }: { user: User }) {
     // Reset instance specific states to default
     setFormQty(1);
     setFormCapacity('');
+    setFormCapacityUnit('ml');
     setFormUsage('使用中');
     setFormThreshold(0);
     setFormExpiry('');
@@ -1374,14 +1388,26 @@ function MainApp({ user }: { user: User }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-retro-text/75 mb-1">規格/容量與單位</label>
-                  <input 
-                    type="text" 
-                    placeholder="例如: 30ml、50g"
-                    value={formCapacity}
-                    onChange={(e) => setFormCapacity(e.target.value)}
-                    className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                  />
+                  <label className="block text-xs font-bold text-retro-text/75 mb-1">容量與單位</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="容量 (例如: 30)"
+                      value={formCapacity}
+                      onChange={(e) => setFormCapacity(e.target.value)}
+                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium flex-1"
+                    />
+                    <select
+                      value={formCapacityUnit}
+                      onChange={(e) => setFormCapacityUnit(e.target.value)}
+                      className="w-24 p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                    >
+                      <option value="ml">ml</option>
+                      <option value="g">g</option>
+                      <option value="個">個</option>
+                      <option value="罐">罐</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1403,9 +1429,9 @@ function MainApp({ user }: { user: User }) {
                   <input 
                     type="number" 
                     min="0"
-                    placeholder="低於此數量時提醒"
-                    value={formThreshold}
-                    onChange={(e) => setFormThreshold(Math.max(0, parseInt(e.target.value) || 0))}
+                    placeholder="低於此數量時提醒 (0)"
+                    value={formThreshold === 0 ? '' : formThreshold}
+                    onChange={(e) => setFormThreshold(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                   />
                 </div>
@@ -2216,6 +2242,8 @@ function MainApp({ user }: { user: User }) {
                       }
                       return 0;
                     });
+                    
+                  const instancesWithPurchaseInfo = allPurchaseInstances.filter(inst => inst.purchaseDate || inst.purchasePlace || inst.price !== undefined);
 
                   return (
                     <div className="space-y-4 animate-fade-in">
@@ -2230,54 +2258,44 @@ function MainApp({ user }: { user: User }) {
                         <span className="text-[11px] font-extrabold text-retro-text/50 uppercase tracking-wider block">
                           🛒 每一筆的購買明細紀錄 (含封存)
                         </span>
-                        {allPurchaseInstances.map((inst, index) => {
-                          const hasPurchaseInfo = inst.purchaseDate || inst.purchasePlace || inst.price !== undefined;
-
-                          return (
-                            <div key={inst.id} className={`p-3 bg-white border border-retro-text/5 rounded-xl space-y-2 shadow-xs ${inst.isArchived ? 'opacity-70 grayscale' : ''}`}>
-                              <div className="flex justify-between items-center border-b border-stone-100 pb-1.5">
-                                <span className="text-xs font-extrabold text-retro-secondary flex items-center gap-1.5">
-                                  明細 #{allPurchaseInstances.length - index} ({inst.capacity || '無容量規格'})
-                                  {inst.isArchived && <span className="bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded text-[9px]">已封存</span>}
-                                </span>
-                            <span className="text-[10px] font-bold bg-stone-100 text-stone-500 px-2 py-0.5 rounded">
-                              數量: {inst.qty}
-                            </span>
-                          </div>
-
-                          {hasPurchaseInfo ? (
-                            <div className="grid grid-cols-1 gap-1.5 text-xs">
-                              <div className="flex justify-between">
-                                <span className="text-stone-400 font-semibold">📅 購買日期</span>
-                                <span className="text-retro-text font-bold font-mono">{inst.purchaseDate || '未記錄'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-stone-400 font-semibold">📍 購買地點</span>
-                                <span className="text-retro-text font-bold">{inst.purchasePlace || '未記錄'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-stone-400 font-semibold">💰 購買單價</span>
-                                <span className="text-retro-secondary font-extrabold font-mono">
-                                  {inst.price !== undefined ? `NT$ ${inst.price}` : '未記錄'}
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="py-2 text-center text-[11px] text-stone-400 font-semibold">
-                              <span>暫無此項目的購買日期、購買地點與單價紀錄</span>
+                        
+                        <div className="overflow-hidden rounded-xl border border-retro-text/5 bg-white shadow-xs">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-stone-50 border-b border-retro-text/5 text-[10px] uppercase text-retro-text/50">
+                                <th className="p-2.5 font-bold whitespace-nowrap">日期</th>
+                                <th className="p-2.5 font-bold whitespace-nowrap">地點</th>
+                                <th className="p-2.5 font-bold text-right whitespace-nowrap">金額</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-retro-text/5">
+                              {allPurchaseInstances.map((inst, index) => {
+                                const hasPurchaseInfo = inst.purchaseDate || inst.purchasePlace || inst.price !== undefined;
+                                if (!hasPurchaseInfo) return null;
+                                return (
+                                  <tr key={inst.id} className={`text-xs text-retro-text ${inst.isArchived ? 'opacity-50 grayscale' : ''}`}>
+                                    <td className="p-2.5 font-mono">{inst.purchaseDate || '-'}</td>
+                                    <td className="p-2.5">{inst.purchasePlace || '-'}</td>
+                                    <td className="p-2.5 font-mono font-bold text-right text-retro-secondary">{inst.price !== undefined ? `$${inst.price}` : '-'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                          {instancesWithPurchaseInfo.length === 0 && (
+                            <div className="py-6 text-center text-xs text-stone-400 font-semibold bg-white">
+                              暫無購買紀錄
                             </div>
                           )}
                         </div>
-                      );
-                    })}
+                      </div>
 
-                    <p className="text-[10px] text-center text-stone-400 font-semibold pt-1">
-                      💡 提示：點擊右上角的編輯圖示（數量狀況頁籤中）即可新增購買紀錄
-                    </p>
-                  </div>
-                </div>
-              );
-            })()
+                      <p className="text-[10px] text-center text-stone-400 font-semibold pt-1">
+                        💡 提示：點擊右上角的編輯圖示（數量狀況頁籤中）即可新增購買紀錄
+                      </p>
+                    </div>
+                  );
+                })()
             )}
             
             {/* Quick add instance footer */}
