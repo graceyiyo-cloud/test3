@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { onAuthStateChanged, User, getRedirectResult } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, signInWithGoogle, logOut } from './firebase';
 import { 
@@ -2457,12 +2457,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 檢查是否有重新導向登入的錯誤
-    getRedirectResult(auth).catch((error) => {
-      console.error("Redirect login error:", error);
-      alert(`登入發生錯誤：${error.message}`);
-    });
-
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
