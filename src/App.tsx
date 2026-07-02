@@ -663,6 +663,7 @@ function MainApp({ user }: { user: User }) {
     const purchaseDateVal = formPurchaseDate || undefined;
     const purchasePlaceVal = formPurchasePlace.trim() || undefined;
     const priceVal = formPrice ? parseFloat(formPrice) : undefined;
+    const finalCapacity = formCapacity ? `${formCapacity}${formCapacityUnit}` : '';
 
     // A. Edit Master Product Info ONLY (Requirement: Button 3 - editing master info of the product group)
     if (editingProductId && !editingInstanceId) {
