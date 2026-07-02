@@ -153,6 +153,8 @@ function MainApp({ user }: { user: User }) {
   // Editing state
   const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [isEditingMaster, setIsEditingMaster] = useState(false);
+  const [isAddingInstanceToExisting, setIsAddingInstanceToExisting] = useState(false);
 
   // --- Setting View States ---
   const [settingsView, setSettingsView] = useState<'menu' | 'apikey' | 'category' | 'history'>('menu');
@@ -623,6 +625,8 @@ function MainApp({ user }: { user: User }) {
     setFormPrice('');
     setEditingInstanceId(null);
     setEditingProductId(null);
+    setIsEditingMaster(false);
+    setIsAddingInstanceToExisting(false);
   };
 
   const handleTabChange = (tabId: string) => {
@@ -662,7 +666,8 @@ function MainApp({ user }: { user: User }) {
             subcategory: subcatValue,
             brand: formBrand.trim(),
             name: formName.trim(),
-            photo: formPhoto || prod.photo
+            photo: formPhoto || prod.photo,
+            threshold: Number(formThreshold) || 0
           };
         }
         return prod;
@@ -699,7 +704,6 @@ function MainApp({ user }: { user: User }) {
                   qty: formQty,
                   capacity: finalCapacity,
                   usage: formUsage,
-                  threshold: Number(formThreshold) || 0,
                   expiry: formExpiry,
                   paoMonths: paoVal,
                   openedDate: openedVal,
@@ -741,7 +745,6 @@ function MainApp({ user }: { user: User }) {
           qty: formQty,
           capacity: finalCapacity,
           usage: formUsage,
-          threshold: Number(formThreshold) || 0,
           expiry: formExpiry,
           paoMonths: paoVal,
           openedDate: openedVal,
@@ -762,6 +765,7 @@ function MainApp({ user }: { user: User }) {
             name: formName.trim(),
             photo: formPhoto || undefined,
             status: 'active',
+            threshold: Number(formThreshold) || 0,
             instances: [newInstance]
           };
           updatedProducts.push(newProduct);
@@ -777,7 +781,6 @@ function MainApp({ user }: { user: User }) {
         qty: formQty,
         capacity: finalCapacity,
         usage: formUsage,
-        threshold: Number(formThreshold) || 0,
         expiry: formExpiry,
         paoMonths: paoVal,
         openedDate: openedVal,
@@ -818,6 +821,7 @@ function MainApp({ user }: { user: User }) {
           name: formName.trim(),
           photo: formPhoto || undefined,
           status: 'active',
+          threshold: Number(formThreshold) || 0,
           instances: [newInstance]
         };
         setProducts([...products, newProd]);
@@ -838,6 +842,8 @@ function MainApp({ user }: { user: User }) {
   const handleEditInstanceTrigger = (prod: Product, inst: ProductInstance) => {
     setEditingProductId(prod.id);
     setEditingInstanceId(inst.id);
+    setIsEditingMaster(false);
+    setIsAddingInstanceToExisting(false);
 
     setFormBrand(prod.brand);
     setFormName(prod.name);
@@ -875,6 +881,8 @@ function MainApp({ user }: { user: User }) {
   const handleEditProductMasterTrigger = (prod: Product) => {
     setEditingProductId(prod.id);
     setEditingInstanceId(null); // No specific instance edit, editing master product details!
+    setIsEditingMaster(true);
+    setIsAddingInstanceToExisting(false);
     setFormBrand(prod.brand);
     setFormName(prod.name);
     setFormCategory(prod.category);
@@ -1033,6 +1041,9 @@ function MainApp({ user }: { user: User }) {
   // Quick prepopulate form when adding another instance under a product
   const handleAddAnotherInstanceTrigger = (prod: Product) => {
     clearForm();
+    setEditingProductId(prod.id); // set this to ensure we know it belongs to an existing product
+    setIsAddingInstanceToExisting(true);
+    setIsEditingMaster(false);
     setFormBrand(prod.brand);
     setFormName(prod.name);
     setFormCategory(prod.category);
@@ -1223,7 +1234,7 @@ function MainApp({ user }: { user: User }) {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-retro-secondary flex items-center gap-2">
                 <Sparkles className="w-5 h-5" />
-                {editingInstanceId ? '修改明細資訊' : '確認新增品項'}
+                {isEditingMaster ? '編輯大品項' : editingInstanceId ? '修改明細資訊' : isAddingInstanceToExisting ? '新增規格明細' : '確認新增品項'}
               </h3>
               <button 
                 type="button" 
@@ -1238,143 +1249,166 @@ function MainApp({ user }: { user: User }) {
             </div>
 
             <form onSubmit={handleFormSave} className="space-y-4">
-              {/* Photo Select */}
-              <div>
-                <label className="block text-xs font-bold text-retro-text/75 mb-1.5">
-                  產品照片 (選填)
-                </label>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="file" 
-                    ref={formPhotoInputRef}
-                    onChange={(e) => handlePhotoUpload(e, true)}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => formPhotoInputRef.current?.click()}
-                    className="w-10 h-10 rounded-xl bg-retro-primary text-retro-card flex items-center justify-center cursor-pointer hover:opacity-90 active:scale-95 transition-all"
-                  >
-                    <Camera className="w-4 h-4" />
-                  </button>
-                  {formPhoto ? (
-                    <div className="flex items-center gap-2">
-                      <img 
-                        src={formPhoto} 
-                        alt="預覽" 
-                        className="w-10 h-10 rounded-lg object-cover border border-retro-text/10"
+              {/* ====== MASTER PRODUCT FIELDS ====== */}
+              {(!editingInstanceId && !isAddingInstanceToExisting) && (
+                <div className="space-y-4">
+                  {/* Photo Select */}
+                  <div>
+                    <label className="block text-xs font-bold text-retro-text/75 mb-1.5">
+                      產品照片 (選填)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="file" 
+                        ref={formPhotoInputRef}
+                        onChange={(e) => handlePhotoUpload(e, true)}
+                        accept="image/*"
+                        className="hidden"
                       />
                       <button 
                         type="button"
-                        onClick={() => setFormPhoto('')}
-                        className="text-xs text-red-500 font-bold hover:underline"
+                        onClick={() => formPhotoInputRef.current?.click()}
+                        className="w-10 h-10 rounded-xl bg-retro-primary text-retro-card flex items-center justify-center cursor-pointer hover:opacity-90 active:scale-95 transition-all"
                       >
-                        移除
+                        <Camera className="w-4 h-4" />
                       </button>
+                      {formPhoto ? (
+                        <div className="flex items-center gap-2">
+                          <img 
+                            src={formPhoto} 
+                            alt="預覽" 
+                            className="w-10 h-10 rounded-lg object-cover border border-retro-text/10"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setFormPhoto('')}
+                            className="text-xs text-red-500 font-bold hover:underline"
+                          >
+                            移除
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-retro-text/40 font-medium">尚未選擇照片</span>
+                      )}
                     </div>
-                  ) : (
-                    <span className="text-xs text-retro-text/40 font-medium">尚未選擇照片</span>
-                  )}
-                </div>
-              </div>
+                  </div>
 
-              {/* Main Category */}
-              <div>
-                <label className="block text-xs font-bold text-retro-text/75 mb-1">主類別</label>
-                <select 
-                  value={formCategory}
-                  onChange={(e) => {
-                    setFormCategory(e.target.value);
-                    setFormSubcategory(''); // reset
-                  }}
-                  className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                >
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
+                  {/* Main Category & Subcategory */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-retro-text/75 mb-1">主類別</label>
+                      <select 
+                        value={formCategory}
+                        onChange={(e) => {
+                          setFormCategory(e.target.value);
+                          setFormSubcategory(''); // reset
+                        }}
+                        className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                      >
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-              {/* Subcategory */}
-              <div>
-                <label className="block text-xs font-bold text-retro-text/75 mb-1">子分類</label>
-                <div className="space-y-2">
-                  <select 
-                    value={
-                      currentFormSubcategories.includes(formSubcategory)
-                        ? formSubcategory
-                        : formSubcategory === '' 
-                          ? '' 
-                          : 'custom'
-                    }
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === 'custom') {
-                        setFormSubcategory('自訂子分類');
-                      } else {
-                        setFormSubcategory(val);
-                      }
-                    }}
-                    className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                  >
-                    <option value="">請選擇子分類</option>
-                    {currentFormSubcategories.map((sub, idx) => (
-                      <option key={idx} value={sub}>{sub}</option>
-                    ))}
-                    <option value="custom">✍️ 自訂其他...</option>
-                  </select>
+                    <div>
+                      <label className="block text-xs font-bold text-retro-text/75 mb-1">子分類</label>
+                      <div className="space-y-2">
+                        <select 
+                          value={
+                            currentFormSubcategories.includes(formSubcategory)
+                              ? formSubcategory
+                              : formSubcategory === '' 
+                                ? '' 
+                                : 'custom'
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'custom') {
+                              setFormSubcategory('自訂子分類');
+                            } else {
+                              setFormSubcategory(val);
+                            }
+                          }}
+                          className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                        >
+                          <option value="">請選擇子分類</option>
+                          {currentFormSubcategories.map((sub, idx) => (
+                            <option key={idx} value={sub}>{sub}</option>
+                          ))}
+                          <option value="custom">✍️ 自訂其他...</option>
+                        </select>
 
-                  {(formSubcategory !== '' && !currentFormSubcategories.includes(formSubcategory)) && (
+                        {(formSubcategory !== '' && !currentFormSubcategories.includes(formSubcategory)) && (
+                          <input 
+                            type="text" 
+                            placeholder="請輸入自訂子分類名稱"
+                            value={formSubcategory === '自訂子分類' ? '' : formSubcategory}
+                            onChange={(e) => setFormSubcategory(e.target.value)}
+                            className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Brand Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-retro-text/75 mb-1">品牌名稱</label>
                     <input 
                       type="text" 
-                      placeholder="請輸入自訂子分類名稱"
-                      value={formSubcategory === '自訂子分類' ? '' : formSubcategory}
-                      onChange={(e) => setFormSubcategory(e.target.value)}
+                      placeholder="請輸入品牌"
+                      value={formBrand}
+                      onChange={(e) => setFormBrand(e.target.value)}
                       className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                     />
-                  )}
-                </div>
-              </div>
+                  </div>
 
-              {/* Brand Name */}
-              <div>
-                <label className="block text-xs font-bold text-retro-text/75 mb-1">品牌名稱</label>
-                <input 
-                  type="text" 
-                  placeholder="請輸入品牌"
-                  value={formBrand}
-                  onChange={(e) => setFormBrand(e.target.value)}
-                  className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                />
-              </div>
+                  {/* Product Name & AI Web Search Assist */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-bold text-retro-text/75">產品名稱</label>
+                      {isSearchingAi && <span className="text-[10px] text-retro-primary animate-pulse font-semibold">AI 正在網搜中...</span>}
+                    </div>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="請輸入產品名稱"
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        className="flex-1 p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                      />
+                      <button 
+                        type="button"
+                        onClick={handleAiWebSearch}
+                        className="w-10 h-10 rounded-xl bg-retro-primary text-retro-card flex items-center justify-center hover:opacity-90 active:scale-95 transition-all flex-shrink-0"
+                        title="網路搜尋官方完整品牌與品名"
+                      >
+                        <Search className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Product Name & AI Web Search Assist */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold text-retro-text/75">產品名稱</label>
-                  {isSearchingAi && <span className="text-[10px] text-retro-primary animate-pulse font-semibold">AI 正在網搜中...</span>}
+                  {/* Threshold */}
+                  <div>
+                    <label className="block text-xs font-bold text-retro-text/75 mb-1">補貨門檻數量</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      placeholder="低於此數量時提醒 (0)"
+                      value={formThreshold === 0 ? '' : formThreshold}
+                      onChange={(e) => setFormThreshold(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                    />
+                    <p className="text-[10px] text-retro-text/50 mt-1">此品項所有未開封明細之數量加總低於此設定時，會顯示補貨提醒</p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="請輸入產品名稱"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    className="flex-1 p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                  />
-                  <button 
-                    type="button"
-                    onClick={handleAiWebSearch}
-                    className="w-10 h-10 rounded-xl bg-retro-primary text-retro-card flex items-center justify-center hover:opacity-90 active:scale-95 transition-all flex-shrink-0"
-                    title="網路搜尋官方完整品牌與品名"
-                  >
-                    <Search className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              )}
 
-              {/* Quantity and Capacity */}
+              {/* ====== INSTANCE PRODUCT FIELDS ====== */}
+              {!isEditingMaster && (
+                <div className={`space-y-4 ${!editingInstanceId && !isAddingInstanceToExisting ? 'pt-4 mt-4 border-t border-retro-text/10' : ''}`}>
+                  {/* Quantity and Capacity */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-retro-text/75 mb-1">數量</label>
@@ -1411,30 +1445,17 @@ function MainApp({ user }: { user: User }) {
                 </div>
               </div>
 
-              {/* Usage & Restock Threshold */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-retro-text/75 mb-1">使用狀態</label>
-                  <select 
-                    value={formUsage}
-                    onChange={(e) => setFormUsage(e.target.value as '使用中' | '未開封')}
-                    className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                  >
-                    <option value="使用中">使用中</option>
-                    <option value="未開封">未開封</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-retro-text/75 mb-1">補貨門檻數量</label>
-                  <input 
-                    type="number" 
-                    min="0"
-                    placeholder="低於此數量時提醒 (0)"
-                    value={formThreshold === 0 ? '' : formThreshold}
-                    onChange={(e) => setFormThreshold(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                  />
-                </div>
+              {/* Usage */}
+              <div>
+                <label className="block text-xs font-bold text-retro-text/75 mb-1">使用狀態</label>
+                <select 
+                  value={formUsage}
+                  onChange={(e) => setFormUsage(e.target.value as '使用中' | '未開封')}
+                  className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                >
+                  <option value="使用中">使用中</option>
+                  <option value="未開封">未開封</option>
+                </select>
               </div>
 
               {/* Requirement 3: Period After Opening (PAO) & Opening Date fields */}
@@ -1520,12 +1541,15 @@ function MainApp({ user }: { user: User }) {
               </div>
 
               {/* Action Buttons */}
+                </div>
+              )}
+
               <div className="space-y-2 pt-2">
                 <button 
                   type="submit"
                   className="w-full py-3 bg-retro-secondary text-retro-card font-bold text-sm rounded-xl hover:brightness-105 active:scale-[0.99] transition-all shadow cursor-pointer"
                 >
-                  {editingInstanceId ? '儲存修改' : '確認無誤，新增至資料庫'}
+                  {isEditingMaster ? '儲存大品項修改' : editingInstanceId ? '儲存修改' : isAddingInstanceToExisting ? '新增規格明細' : '確認無誤，新增至資料庫'}
                 </button>
 
                 {editingInstanceId && (
@@ -1546,6 +1570,30 @@ function MainApp({ user }: { user: User }) {
                       永久刪除此明細
                     </button>
                   </div>
+                )}
+
+                {isEditingMaster && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (editingProductId) {
+                        askConfirmation(
+                          '刪除大品項',
+                          '確定要永久刪除此大品項及其所有購買明細嗎？此操作無法復原。',
+                          () => {
+                            setProducts(products.filter(p => p.id !== editingProductId));
+                            setShowAddForm(false);
+                            setSelectedDetailProduct(null);
+                            clearForm();
+                            showToast('大品項已成功刪除！');
+                          }
+                        );
+                      }
+                    }}
+                    className="w-full py-2.5 bg-red-500 text-white font-bold text-xs rounded-xl hover:bg-red-600 transition-all cursor-pointer mt-2"
+                  >
+                    永久刪除此大品項 (含所有明細)
+                  </button>
                 )}
               </div>
             </form>
@@ -2103,6 +2151,21 @@ function MainApp({ user }: { user: User }) {
               {detailActiveTab === 'status' ? (
                 /* Tab 1 Content: 商品數量狀況 */
                 <div className="space-y-4 animate-fade-in">
+                  
+                  {/* Overall Restock Warning */}
+                  {(() => {
+                    const totalUnopened = selectedDetailProduct.instances.filter(inst => inst.usage === '未開封').reduce((sum, inst) => sum + inst.qty, 0);
+                    if (selectedDetailProduct.threshold > 0 && totalUnopened <= selectedDetailProduct.threshold) {
+                      return (
+                        <div className="text-xs font-bold text-red-500 bg-red-50 border border-red-100 p-2.5 rounded-xl flex items-center gap-2 shadow-sm">
+                          <Info className="w-4 h-4 flex-shrink-0" />
+                          <span>庫存偏低！目前未開封總計 {totalUnopened} 件，已達補貨門檻 ({selectedDetailProduct.threshold} 件)</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   {/* Bento Stats Counters */}
                   <div className="grid grid-cols-3 gap-2.5">
                     <div className="bg-stone-50 p-2.5 rounded-xl border border-retro-text/5 text-center flex flex-col justify-between min-h-[70px]">
@@ -2140,7 +2203,6 @@ function MainApp({ user }: { user: User }) {
                     {selectedDetailProduct.instances.map((inst, index) => {
                       const daysLeft = calculateDaysToExpiry(inst.expiry);
                       const isUrgent = daysLeft <= 60;
-                      const needsRestock = inst.usage === '未開封' && inst.qty <= inst.threshold;
                       const pao = calculatePaoExpiry(inst.openedDate, inst.paoMonths);
 
                       return (
@@ -2218,13 +2280,6 @@ function MainApp({ user }: { user: User }) {
                               )}
                             </div>
                           </div>
-
-                          {needsRestock && (
-                            <div className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 p-1.5 rounded flex items-center gap-1">
-                              <Info className="w-3.5 h-3.5" />
-                              <span>庫存偏低！低於設定的補貨門檻 {inst.threshold} 件</span>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -2384,7 +2439,9 @@ function ProductCard({
   // Calculate standard warning styles
   const isUrgent = minDaysToExpiry <= 60;
   const totalQty = instances.reduce((sum, inst) => sum + inst.qty, 0);
+  const totalUnopenedQty = instances.filter(inst => inst.usage === '未開封').reduce((sum, inst) => sum + inst.qty, 0);
   const hasInUse = instances.some(inst => inst.usage === '使用中');
+  const needsRestock = product.threshold > 0 && totalUnopenedQty <= product.threshold;
 
   return (
     <div 
@@ -2413,8 +2470,14 @@ function ProductCard({
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${hasInUse ? 'bg-green-500 animate-pulse' : 'bg-stone-300'}`}></span>
             {product.brand}
           </span>
-          <span className="text-sm font-bold font-display text-retro-text leading-snug truncate group-hover:text-retro-primary transition-colors mt-0.5">
-            {product.name}
+          <span className="text-sm font-bold font-display text-retro-text leading-snug truncate group-hover:text-retro-primary transition-colors mt-0.5 flex items-center gap-2">
+            <span className="truncate">{product.name}</span>
+            {needsRestock && (
+              <span className="flex-shrink-0 bg-red-100 text-red-600 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                <Info className="w-3 h-3" />
+                補貨
+              </span>
+            )}
           </span>
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-[10px] font-semibold text-retro-text/50 bg-stone-100 px-2 py-0.5 rounded-full flex items-center gap-1">

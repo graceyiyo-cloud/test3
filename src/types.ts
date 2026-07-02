@@ -15,7 +15,6 @@ export interface ProductInstance {
   qty: number;
   capacity: string;
   usage: '使用中' | '未開封';
-  threshold: number;
   expiry: string; // YYYY-MM-DD
   paoMonths?: number; // 開封後可使用月數
   openedDate?: string; // 開封日期 YYYY-MM-DD
@@ -31,6 +30,7 @@ export interface Product {
   brand: string;
   name: string;
   photo?: string; // base64 string
+  threshold: number; // 補貨門檻
   instances: ProductInstance[];
   status: 'active' | 'archived';
 }

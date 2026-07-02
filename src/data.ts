@@ -67,13 +67,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: '迪奧精萃再生玫瑰微導粉底',
     photo: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=120&q=80',
     status: 'active',
+    threshold: 0,
     instances: [
       {
         id: 'inst_1_1',
         qty: 1,
         capacity: '30ml',
         usage: '使用中',
-        threshold: 0,
         expiry: '2026-08-14',
         paoMonths: 6,
         openedDate: '2026-02-15' // 已開封 4.5 個月 (尚未過期)
@@ -83,7 +83,6 @@ export const INITIAL_PRODUCTS: Product[] = [
         qty: 1,
         capacity: '30ml',
         usage: '未開封',
-        threshold: 0,
         expiry: '2027-01-01'
       }
     ]
@@ -95,13 +94,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     brand: 'GIORGIO ARMANI',
     name: '輕透亮絲粉底',
     status: 'active',
+    threshold: 2,
     instances: [
       {
         id: 'inst_2_1',
         qty: 1,
         capacity: '30ml',
         usage: '未開封',
-        threshold: 2, // 補貨門檻為 2，大於目前數量 1，故顯示「需補貨」
         expiry: '2027-06-14'
       }
     ]
