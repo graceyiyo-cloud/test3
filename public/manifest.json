@@ -1,7 +1,7 @@
 {
   "name": "美妝保養庫存",
   "short_name": "美妝庫存",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#FAF6F0",
   "theme_color": "#FAF6F0",
