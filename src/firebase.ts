@@ -3,13 +3,14 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signO
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  "projectId": "project-d8904b8a-1715-4363-9d7",
-  "appId": "1:969183701633:web:a71255a8ca047e7aae7b80",
-  "apiKey": "AIzaSyDZrfhFTCc0rdLrFoFQ_Pd29wmW0uz4If4",
-  "authDomain": "project-d8904b8a-1715-4363-9d7.firebaseapp.com",
-  "storageBucket": "project-d8904b8a-1715-4363-9d7.firebasestorage.app",
-  "messagingSenderId": "969183701633",
-  "measurementId": ""
+  apiKey: "AIzaSyAqSxxH5LhsKSV2NPDzQFOSHn_rQNv588k",
+  authDomain: "url-sorting.firebaseapp.com",
+  databaseURL: "https://url-sorting-default-rtdb.firebaseio.com",
+  projectId: "url-sorting",
+  storageBucket: "url-sorting.firebasestorage.app",
+  messagingSenderId: "576779796443",
+  appId: "1:576779796443:web:ff98b5b55049f7b7e0f1fe",
+  measurementId: "G-0L44SJTSLQ"
 };
 
 export const app = initializeApp(firebaseConfig);
