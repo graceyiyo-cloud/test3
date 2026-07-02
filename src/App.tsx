@@ -2065,11 +2065,10 @@ function MainApp({ user }: { user: User }) {
 
       {/* ==================== 8. Detailed Product View Modal (Requirement 1: 完整畫面) ==================== */}
       {selectedDetailProduct && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-          <div className="w-full sm:max-w-md bg-white border-t sm:border-2 border-retro-text rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[88dvh] sm:max-h-[85dvh] animate-slide-up pb-safe mt-6">
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+          <div className="w-full h-[100dvh] sm:h-auto sm:max-w-md bg-white sm:border-2 border-retro-text sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[100dvh] sm:max-h-[85dvh] animate-slide-up pb-safe">
             {/* Top Bar with Drag Handle for Mobile / Header */}
-            <div className="relative pt-6 pb-4 px-5 border-b border-retro-text/5 flex items-start gap-4 bg-stone-50/50">
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-stone-200 rounded-full sm:hidden"></div>
+            <div className="relative pt-[max(1.5rem,env(safe-area-inset-top))] pb-4 px-5 border-b border-retro-text/5 flex items-start gap-4 bg-stone-50/50">
               {selectedDetailProduct.photo ? (
                 <img 
                   referrerPolicy="no-referrer"
