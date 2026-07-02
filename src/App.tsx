@@ -970,7 +970,7 @@ function MainApp({ user }: { user: User }) {
     setFormCapacityUnit(unit);
 
     setFormUsage(inst.usage);
-    setFormThreshold(inst.threshold);
+    setFormThreshold(prod.threshold ? String(prod.threshold) : '');
     setFormExpiry(inst.expiry);
     setFormPaoMonths(inst.paoMonths ? String(inst.paoMonths) : '');
     setFormOpenedDate(inst.openedDate || '');
@@ -1058,6 +1058,7 @@ function MainApp({ user }: { user: User }) {
             name: (targetProduct as Product).name,
             photo: (targetProduct as Product).photo,
             status: 'archived',
+            threshold: (targetProduct as Product).threshold,
             instances: [{
               ...(archivedInstance as ProductInstance),
               id: `inst_archived_${Date.now()}`
