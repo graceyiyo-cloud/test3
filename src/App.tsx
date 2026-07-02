@@ -1109,7 +1109,7 @@ function MainApp({ user }: { user: User }) {
   return (
     <div className="min-h-screen bg-retro-bg text-retro-text relative pb-24 font-sans select-none antialiased">
       {/* 1. App Header */}
-      <header className="px-5 py-5 flex justify-between items-center bg-retro-bg/90 backdrop-blur-sm sticky top-0 z-40 border-b border-retro-text/10 max-w-2xl mx-auto">
+      <header className="px-5 py-5 pt-[max(1.25rem,env(safe-area-inset-top))] flex justify-between items-center bg-retro-bg/90 backdrop-blur-sm sticky top-0 z-40 border-b border-retro-text/10 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold font-display tracking-tight flex items-center gap-2">
           <span>化妝品管理系統</span>
         </h1>
@@ -1423,18 +1423,18 @@ function MainApp({ user }: { user: User }) {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-retro-text/75 mb-1">容量與單位</label>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <input 
                       type="text" 
-                      placeholder="容量 (例如: 30)"
+                      placeholder="例如: 30"
                       value={formCapacity}
                       onChange={(e) => setFormCapacity(e.target.value)}
-                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium flex-1"
+                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                     />
                     <select
                       value={formCapacityUnit}
                       onChange={(e) => setFormCapacityUnit(e.target.value)}
-                      className="w-24 p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                     >
                       <option value="ml">ml</option>
                       <option value="g">g</option>
@@ -2034,7 +2034,7 @@ function MainApp({ user }: { user: User }) {
       </div>
 
       {/* 7. Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-retro-card border-t border-retro-text/10 flex justify-around items-center py-2.5 px-2 shadow-2xl z-40 max-w-2xl mx-auto overflow-x-auto">
+      <nav className="fixed bottom-0 left-0 right-0 bg-retro-card border-t border-retro-text/10 flex justify-around items-center pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 max-w-2xl mx-auto overflow-x-auto">
         {categories.map(cat => (
           <button 
             key={cat.id}
@@ -2065,10 +2065,11 @@ function MainApp({ user }: { user: User }) {
 
       {/* ==================== 8. Detailed Product View Modal (Requirement 1: 完整畫面) ==================== */}
       {selectedDetailProduct && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
-          <div className="w-full sm:max-w-md bg-white border-t sm:border-2 border-retro-text rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[85vh] animate-slide-up pb-safe">
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+          <div className="w-full sm:max-w-md bg-white border-t sm:border-2 border-retro-text rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[88dvh] sm:max-h-[85dvh] animate-slide-up pb-safe mt-6">
             {/* Top Bar with Drag Handle for Mobile / Header */}
-            <div className="relative p-5 pb-4 border-b border-retro-text/5 flex items-start gap-4 bg-stone-50/50">
+            <div className="relative pt-6 pb-4 px-5 border-b border-retro-text/5 flex items-start gap-4 bg-stone-50/50">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-stone-200 rounded-full sm:hidden"></div>
               {selectedDetailProduct.photo ? (
                 <img 
                   referrerPolicy="no-referrer"
