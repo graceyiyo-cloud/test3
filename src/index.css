@@ -104,7 +104,8 @@ body {
 }
 
 [data-theme="pixel"] nav button,
-[data-theme="pixel"] button.action-btn-no-pixel {
+[data-theme="pixel"] button.action-btn-no-pixel,
+[data-theme="pixel"] .no-pixel-border {
   border: none !important;
   box-shadow: none !important;
   background-color: transparent !important;
@@ -120,4 +121,10 @@ body {
 }
 .pt-safe {
   padding-top: env(safe-area-inset-top);
+}
+
+
+[data-theme="pixel"] .pixel-box {
+  border: 1px solid var(--theme-text) !important;
+  box-shadow: 1px 1px 0px var(--theme-text) !important;
 }

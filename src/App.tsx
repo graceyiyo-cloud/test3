@@ -2866,7 +2866,7 @@ ${categoryOptions}
                               )}
                               
                               {/* The new Usage select replacing the badge */}
-                              <div className="relative flex items-center gap-1 cursor-pointer bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded-md transition-colors ml-1">
+                              <div className="relative flex items-center gap-1 cursor-pointer bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded-md transition-colors ml-1 pixel-box">
                                 <span className={`w-2 h-2 rounded-full ${inst.usage === '使用中' ? 'bg-green-500 animate-pulse' : 'bg-stone-300'}`}></span>
                                 <select
                                   value={inst.usage === '未開封' ? '未開封' : '使用中'}
@@ -2899,7 +2899,7 @@ ${categoryOptions}
                                       showToast(`狀態已變更為：${val === '未開封' ? '未使用' : '已開封'}`);
                                     }
                                   }}
-                                  className="text-xs font-bold text-retro-text/80 bg-transparent outline-none cursor-pointer appearance-none pr-3 relative z-10"
+                                  className="text-xs font-bold text-retro-text/80 bg-transparent outline-none cursor-pointer appearance-none pr-3 relative z-10 no-pixel-border"
                                 >
                                   <option value="未開封">未使用</option>
                                   <option value="使用中">已開封</option>
