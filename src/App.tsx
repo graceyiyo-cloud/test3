@@ -209,9 +209,33 @@ function MainApp({ user }: { user: User }) {
     saveUserData();
   }, [categories, products, isDataLoaded, user.uid]);
 
-  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
-    return localStorage.getItem('cosmetics_gemini_api_key') || '';
+  const [apiKeys, setApiKeys] = useState<string[]>(() => {
+    let keys = ['', '', ''];
+    try {
+      const stored = localStorage.getItem(`cosmetics_gemini_api_keys_${user.uid}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+           keys = [...parsed, '', '', ''].slice(0, 3);
+        }
+      } else {
+        const oldKey = localStorage.getItem('cosmetics_gemini_api_key');
+        if (oldKey) {
+           keys[0] = oldKey;
+        }
+      }
+    } catch(e) {}
+    return keys;
   });
+  
+  const apiKeyIndexRef = useRef(0);
+  const getGeminiApiKey = () => {
+    const validKeys = apiKeys.filter(k => k.trim().length > 0);
+    if (validKeys.length === 0) return null;
+    const key = validKeys[apiKeyIndexRef.current % validKeys.length];
+    apiKeyIndexRef.current += 1;
+    return key;
+  };
 
   const [appTheme, setAppTheme] = useState<'retro' | 'pixel' | 'minimal'>(() => {
     return (localStorage.getItem('cosmetics_theme') as 'retro' | 'pixel' | 'minimal') || 'retro';
@@ -322,12 +346,12 @@ function MainApp({ user }: { user: User }) {
   const [editingSubCatId, setEditingSubCatId] = useState<string | null>(null);
   const [editingSubIdx, setEditingSubIdx] = useState<number | null>(null);
   const [editingSubName, setEditingSubName] = useState('');
-  const [apiKeyInput, setApiKeyInput] = useState(geminiApiKey);
+  const [apiKeyInputs, setApiKeyInputs] = useState<string[]>(apiKeys);
   const [showApiKey, setShowApiKey] = useState(false);
 
   const handleSaveApiKey = () => {
-    localStorage.setItem('cosmetics_gemini_api_key', apiKeyInput);
-    setGeminiApiKey(apiKeyInput);
+    localStorage.setItem(`cosmetics_gemini_api_keys_${user.uid}`, JSON.stringify(apiKeyInputs));
+    setApiKeys(apiKeyInputs);
     showToast('Gemini API 金鑰儲存成功！');
   };
 
@@ -583,7 +607,8 @@ function MainApp({ user }: { user: User }) {
 
   // --- API Call: Gemini Web Search & Image Recognition ---
   const triggerAiScan = async (base64Data: string, mimeType: string) => {
-    if (!geminiApiKey) {
+    const activeApiKey = getGeminiApiKey();
+    if (!activeApiKey) {
       showToast('尚未設定 API Key，請在設定頁面輸入金鑰！');
       return;
     }
@@ -598,7 +623,7 @@ function MainApp({ user }: { user: User }) {
 
     try {
       const base64String = base64Data.split(',')[1];
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeApiKey}`;
       
       const payload = {
         contents: [{
@@ -689,7 +714,8 @@ ${categoryOptions}
       return;
     }
 
-    if (!geminiApiKey) {
+    const activeApiKey = getGeminiApiKey();
+    if (!activeApiKey) {
       showToast('尚未設定 API 金鑰！請至設定頁面設定您的 Gemini API Key。');
       return;
     }
@@ -703,7 +729,7 @@ ${categoryOptions}
 
     // Try with Google Search tool first
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiApiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeApiKey}`;
       const payload = {
         contents: [{
           parts: [{
@@ -767,7 +793,7 @@ ${categoryOptions}
 
     // Fallback: Try WITHOUT Google Search tool, using pre-trained knowledge
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiApiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeApiKey}`;
       const payload = {
         contents: [{
           parts: [{
@@ -1043,6 +1069,20 @@ ${categoryOptions}
     if (subcatValue === '自訂子分類' || !subcatValue) {
       subcatValue = '其他';
     }
+
+    // Automatically add custom subcategory to the selected category (Requirement 5)
+    setCategories(prev => {
+      let isUpdated = false;
+      const newCats = prev.map(cat => {
+        if (cat.id === formCategory && !cat.subcategories.includes(subcatValue)) {
+          isUpdated = true;
+          return { ...cat, subcategories: [...cat.subcategories, subcatValue] };
+        }
+        return cat;
+      });
+      return isUpdated ? newCats : prev;
+    });
+
     const paoVal = formPaoMonths ? parseInt(formPaoMonths) : undefined;
     const openedVal = (formUsage === '使用中' || formUsage === '已用完' || formUsage === '已丟棄') ? formOpenedDate : undefined;
     const finishedVal = (formUsage === '已用完' || formUsage === '已丟棄') ? formFinishedDate : undefined;
@@ -2182,30 +2222,38 @@ ${categoryOptions}
               <p className="text-xs text-retro-text/60 leading-relaxed font-medium">
                 若要使用「自動網搜補全產品」或「相機拍照影像辨識」功能，請在此處設定您的 Gemini API Key。金鑰會安全保存在您的個人瀏覽器中。
               </p>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input 
-                    type={showApiKey ? "text" : "password"}
-                    placeholder="請輸入 GEMINI_API_KEY"
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    className="w-full py-2 pl-3 pr-10 bg-white border border-retro-text/10 rounded-xl text-xs font-semibold text-retro-text focus:outline-none focus:border-retro-primary"
-                  />
+              <div className="space-y-2">
+                {[0, 1, 2].map(idx => (
+                  <div key={idx} className="relative flex-1">
+                    <input 
+                      type={showApiKey ? "text" : "password"}
+                      placeholder={`請輸入 GEMINI_API_KEY ${idx + 1}`}
+                      value={apiKeyInputs[idx]}
+                      onChange={(e) => {
+                        const newInputs = [...apiKeyInputs];
+                        newInputs[idx] = e.target.value;
+                        setApiKeyInputs(newInputs);
+                      }}
+                      className="w-full py-2 pl-3 pr-10 bg-white border border-retro-text/10 rounded-xl text-xs font-semibold text-retro-text focus:outline-none focus:border-retro-primary"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-retro-text/50 hover:text-retro-text"
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                ))}
+                <div className="flex justify-end pt-1">
                   <button 
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-retro-text/50 hover:text-retro-text"
+                    onClick={handleSaveApiKey}
+                    className="px-4 py-2 bg-retro-primary text-retro-card text-xs font-bold rounded-xl hover:brightness-105 active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                   >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <Check className="w-3.5 h-3.5" />
+                    儲存金鑰
                   </button>
                 </div>
-                <button 
-                  onClick={handleSaveApiKey}
-                  className="px-4 bg-retro-primary text-retro-card text-xs font-bold rounded-xl hover:brightness-105 active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  儲存金鑰
-                </button>
               </div>
             </div>
           </div>
@@ -2816,11 +2864,53 @@ ${categoryOptions}
                                   {inst.capacity}
                                 </span>
                               )}
-                              <span className={`w-2 h-2 rounded-full ml-1 ${inst.usage === '使用中' ? 'bg-green-500 animate-pulse' : 'bg-stone-300'}`}></span>
-                              <span className="text-xs font-bold text-retro-text/80">{inst.usage}</span>
+                              
+                              {/* The new Usage select replacing the badge */}
+                              <div className="relative flex items-center gap-1 cursor-pointer bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded-md transition-colors ml-1">
+                                <span className={`w-2 h-2 rounded-full ${inst.usage === '使用中' ? 'bg-green-500 animate-pulse' : 'bg-stone-300'}`}></span>
+                                <select
+                                  value={inst.usage === '未開封' ? '未開封' : '使用中'}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === 'archived') {
+                                      handleArchiveInstance(selectedDetailProduct.id, inst.id);
+                                    } else {
+                                      const nextProducts = products.map(prod => {
+                                        if (prod.id === selectedDetailProduct.id) {
+                                          return {
+                                            ...prod,
+                                            instances: prod.instances.map(i => {
+                                              if (i.id === inst.id) {
+                                                return { 
+                                                  ...i, 
+                                                  usage: val as any,
+                                                  openedDate: val === '使用中' && !i.openedDate ? new Date().toISOString().split('T')[0] : i.openedDate
+                                                };
+                                              }
+                                              return i;
+                                            })
+                                          };
+                                        }
+                                        return prod;
+                                      });
+                                      setProducts(nextProducts);
+                                      const updated = nextProducts.find(p => p.id === selectedDetailProduct.id);
+                                      if (updated) setSelectedDetailProduct(updated);
+                                      showToast(`狀態已變更為：${val === '未開封' ? '未使用' : '已開封'}`);
+                                    }
+                                  }}
+                                  className="text-xs font-bold text-retro-text/80 bg-transparent outline-none cursor-pointer appearance-none pr-3 relative z-10"
+                                >
+                                  <option value="未開封">未使用</option>
+                                  <option value="使用中">已開封</option>
+                                  <option value="archived">封存</option>
+                                </select>
+                                <ChevronDown className="w-3 h-3 absolute right-1 text-retro-text/40 pointer-events-none" />
+                              </div>
+
                             </div>
 
-                            {/* Instance edit/archive buttons */}
+                            {/* Instance edit/delete buttons */}
                             {selectedDetailProduct.status !== 'archived' && (
                               <div className="flex items-center gap-2 bg-stone-50 rounded-lg px-2 py-0.5">
                                 <button 
@@ -2833,14 +2923,7 @@ ${categoryOptions}
                                 >
                                   <Edit3 className="w-3 h-3" />
                                 </button>
-                                <span className="w-[1px] h-3 bg-retro-text/10"></span>
-                                <button 
-                                  onClick={() => handleArchiveInstance(selectedDetailProduct.id, inst.id)}
-                                  className="action-btn-no-pixel text-retro-secondary hover:text-red-500 p-0.5 transition-colors cursor-pointer"
-                                  title="歸檔/封存此細項"
-                                >
-                                  <Archive className="w-3 h-3" />
-                                </button>
+                                
                                 <span className="w-[1px] h-3 bg-retro-text/10"></span>
                                 <button 
                                   onClick={() => handleDeleteInstanceDirect(selectedDetailProduct.id, inst.id)}
@@ -2853,7 +2936,6 @@ ${categoryOptions}
                             )}
                           </div>
 
-                          {/* PAO Expiry / Date Details */}
                           {/* PAO Expiry / Date Details Grid */}
                           <div className="rounded-xl overflow-hidden bg-stone-50/50 mt-2 border border-retro-text/10">
                             {/* Row 1: Expiry */}
