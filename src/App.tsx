@@ -862,7 +862,7 @@ function MainApp({ user }: { user: User }) {
     setFormOpenedDate(new Date().toISOString().split('T')[0]);
     setFormFinishedDate('');
     setFormPhoto('');
-    setFormPurchaseDate('');
+    setFormPurchaseDate(new Date().toISOString().split('T')[0]);
     setFormPurchasePlace('');
     setFormPrice('');
     setEditingInstanceId(null);
@@ -880,7 +880,7 @@ function MainApp({ user }: { user: User }) {
     }
   };
 
-  const handleFormSave = (e: React.FormEvent) => {
+  const handleFormSave = (e: React.FormEvent, forceAsNewInstance = false) => {
     e.preventDefault();
     if (!formName.trim()) {
       showToast('請輸入產品名稱！');
@@ -901,7 +901,7 @@ function MainApp({ user }: { user: User }) {
     const finalCapacity = formCapacity ? `${formCapacity}${formCapacityUnit}` : '';
 
     // A. Edit Master Product Info ONLY (Requirement: Button 3 - editing master info of the product group)
-    if (editingProductId && !editingInstanceId) {
+    if (isEditingMaster && editingProductId) {
       const updatedProducts = products.map(prod => {
         if (prod.id === editingProductId) {
           return {
@@ -924,7 +924,7 @@ function MainApp({ user }: { user: User }) {
     }
 
     // B. Edit Existing Product Instance
-    if (editingInstanceId && editingProductId) {
+    if (editingInstanceId && editingProductId && !forceAsNewInstance) {
       const updatedProducts = products.map(prod => {
         if (prod.id === editingProductId) {
           // If the meta parameters (category, brand, subcategory, name) changed, 
@@ -975,6 +975,8 @@ function MainApp({ user }: { user: User }) {
                                   products.find(p => p.id === editingProductId)?.brand !== formBrand.trim() ||
                                   products.find(p => p.id === editingProductId)?.name !== formName.trim();
 
+      let targetProdId = editingProductId;
+
       if (isMetaChangedInForm) {
         // Find if there's an existing matching product group to merge into
         const matchProd = updatedProducts.find(p => 
@@ -1000,8 +1002,13 @@ function MainApp({ user }: { user: User }) {
         };
 
         if (matchProd) {
-          matchProd.instances.push(newInstance);
-          if (formPhoto) matchProd.photo = formPhoto;
+          const matchIndex = updatedProducts.findIndex(p => p.id === matchProd.id);
+          updatedProducts[matchIndex] = {
+            ...matchProd,
+            instances: [...matchProd.instances, newInstance],
+            photo: formPhoto || matchProd.photo
+          };
+          targetProdId = matchProd.id;
         } else {
           const newProduct: Product = {
             id: `prod_${Date.now()}`,
@@ -1015,10 +1022,13 @@ function MainApp({ user }: { user: User }) {
             instances: [newInstance]
           };
           updatedProducts.push(newProduct);
+          targetProdId = newProduct.id;
         }
       }
 
       setProducts(updatedProducts);
+      const targetProd = updatedProducts.find(p => p.id === targetProdId);
+      if (targetProd) setSelectedDetailProduct(targetProd);
       showToast('明細修改成功！');
     } else {
       // C. Create New Product Group or Add Instance to Existing
@@ -1036,18 +1046,25 @@ function MainApp({ user }: { user: User }) {
         price: priceVal
       };
 
-      // Check if product with identical category + subcat + brand + name already exists
-      const existingProductIndex = products.findIndex(p => 
-        p.category === formCategory && 
-        p.subcategory === subcatValue && 
-        p.brand === formBrand.trim() && 
-        p.name === formName.trim() &&
-        p.status === 'active'
-      );
+      let existingProductIndex = -1;
+      if ((isAddingInstanceToExisting || forceAsNewInstance) && editingProductId) {
+        existingProductIndex = products.findIndex(p => p.id === editingProductId);
+      } else {
+        existingProductIndex = products.findIndex(p => 
+          p.category === formCategory && 
+          p.subcategory === subcatValue && 
+          p.brand === formBrand.trim() && 
+          p.name === formName.trim() &&
+          p.status === 'active'
+        );
+      }
 
       if (existingProductIndex > -1) {
         const updated = [...products];
-        updated[existingProductIndex].instances.push(newInstance);
+        updated[existingProductIndex] = {
+          ...updated[existingProductIndex],
+          instances: [...updated[existingProductIndex].instances, newInstance]
+        };
         if (formPhoto) {
           updated[existingProductIndex].photo = formPhoto;
         }
@@ -1058,6 +1075,7 @@ function MainApp({ user }: { user: User }) {
           next.add(updated[existingProductIndex].id);
           return next;
         });
+        setSelectedDetailProduct(updated[existingProductIndex]);
       } else {
         // Create full new product
         const newProd: Product = {
@@ -1077,6 +1095,7 @@ function MainApp({ user }: { user: User }) {
           next.add(newProd.id);
           return next;
         });
+        setSelectedDetailProduct(newProd);
       }
       showToast(`已成功新增產品：${formName.trim()}`);
     }
@@ -1148,7 +1167,7 @@ function MainApp({ user }: { user: User }) {
     setFormPaoMonths('');
     setFormOpenedDate(new Date().toISOString().split('T')[0]);
     setFormFinishedDate('');
-    setFormPurchaseDate('');
+    setFormPurchaseDate(new Date().toISOString().split('T')[0]);
     setFormPurchasePlace('');
     setFormPrice('');
 
@@ -1161,11 +1180,9 @@ function MainApp({ user }: { user: User }) {
 
   // Add same-product as a new instance (Save as new item)
   const handleSaveAsNewInstance = () => {
-    setEditingInstanceId(null);
-    setEditingProductId(null);
-    // Trigger submit indirectly
+    // Trigger submit indirectly but tell it to force create new
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-    handleFormSave(fakeEvent);
+    handleFormSave(fakeEvent, true);
   };
 
   // Archive a specific product instance (Requirement 4)
@@ -2304,11 +2321,14 @@ function MainApp({ user }: { user: User }) {
               if (!currentCatObj) return null;
               
               // We'll group active products by subcategory
-              const subcatGroups = [...currentCatObj.subcategories, '其他'];
+              const predefinedSubcats = currentCatObj.subcategories;
+              const usedSubcats = Array.from(new Set(activeProducts.map(p => p.subcategory)));
+              const customSubcats = usedSubcats.filter(sub => !predefinedSubcats.includes(sub));
+              const allSubcatGroups = [...predefinedSubcats, ...customSubcats];
               
               // Filter to find subcat groups that have matching active filtered products
-              const nonAndEmptyGroups = subcatGroups.filter(subName => {
-                const groupProds = activeProducts.filter(p => p.subcategory === subName || (subName === '其他' && !currentCatObj.subcategories.includes(p.subcategory)));
+              const nonAndEmptyGroups = allSubcatGroups.filter(subName => {
+                const groupProds = activeProducts.filter(p => p.subcategory === subName);
                 return groupProds.length > 0;
               });
 
@@ -2334,7 +2354,7 @@ function MainApp({ user }: { user: User }) {
               return (
                 <div className="space-y-6">
                   {nonAndEmptyGroups.map(subName => {
-                    const groupProds = activeProducts.filter(p => p.subcategory === subName || (subName === '其他' && !currentCatObj.subcategories.includes(p.subcategory)));
+                    const groupProds = activeProducts.filter(p => p.subcategory === subName);
                     const stats = getSubcategoryStats(subName, currentTab);
 
                     return (
@@ -2536,16 +2556,34 @@ function MainApp({ user }: { user: User }) {
                     </div>
                     <div className="bg-stone-50 p-2.5 rounded-xl border border-retro-text/5 text-center flex flex-col justify-between min-h-[70px]">
                       <span className="text-[10px] font-bold text-retro-text/50">最近到期天數</span>
-                      <span className="text-xl font-extrabold text-amber-600 font-mono">
+                      <div className="flex flex-col items-center">
+                        <span className="text-xl font-extrabold text-amber-600 font-mono leading-none">
+                          {(() => {
+                            let minDays = 9999;
+                            selectedDetailProduct.instances.forEach(inst => {
+                              const days = calculateDaysToExpiry(inst.expiry);
+                              if (days < minDays) minDays = days;
+                            });
+                            return minDays !== 9999 ? minDays : '-';
+                          })()}
+                        </span>
                         {(() => {
+                          let closestDate = null;
                           let minDays = 9999;
                           selectedDetailProduct.instances.forEach(inst => {
                             const days = calculateDaysToExpiry(inst.expiry);
-                            if (days < minDays) minDays = days;
+                            if (days < minDays && inst.expiry) {
+                              minDays = days;
+                              closestDate = inst.expiry;
+                            }
                           });
-                          return minDays !== 9999 ? minDays : '-';
+                          return minDays !== 9999 && closestDate ? (
+                            <span className="text-[9px] font-bold text-retro-text/40 mt-1">
+                              {closestDate.replace(/-/g, '/')}
+                            </span>
+                          ) : null;
                         })()}
-                      </span>
+                      </div>
                     </div>
                   </div>
 
@@ -2584,7 +2622,7 @@ function MainApp({ user }: { user: User }) {
                                     handleEditInstanceTrigger(selectedDetailProduct, inst);
                                     setSelectedDetailProduct(null); // Close modal
                                   }}
-                                  className="text-retro-primary hover:text-retro-secondary p-0.5 transition-colors cursor-pointer"
+                                  className="action-btn-no-pixel text-retro-primary hover:text-retro-secondary p-0.5 transition-colors cursor-pointer"
                                   title="編輯此規格"
                                 >
                                   <Edit3 className="w-3 h-3" />
@@ -2592,7 +2630,7 @@ function MainApp({ user }: { user: User }) {
                                 <span className="w-[1px] h-3 bg-retro-text/10"></span>
                                 <button 
                                   onClick={() => handleArchiveInstance(selectedDetailProduct.id, inst.id)}
-                                  className="text-retro-secondary hover:text-red-500 p-0.5 transition-colors cursor-pointer"
+                                  className="action-btn-no-pixel text-retro-secondary hover:text-red-500 p-0.5 transition-colors cursor-pointer"
                                   title="歸檔/封存此細項"
                                 >
                                   <Archive className="w-3 h-3" />
@@ -2600,7 +2638,7 @@ function MainApp({ user }: { user: User }) {
                                 <span className="w-[1px] h-3 bg-retro-text/10"></span>
                                 <button 
                                   onClick={() => handleDeleteInstanceDirect(selectedDetailProduct.id, inst.id)}
-                                  className="text-red-400 hover:text-red-600 p-0.5 transition-colors cursor-pointer"
+                                  className="action-btn-no-pixel text-red-400 hover:text-red-600 p-0.5 transition-colors cursor-pointer"
                                   title="永久刪除此細項"
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -2610,29 +2648,43 @@ function MainApp({ user }: { user: User }) {
                           </div>
 
                           {/* PAO Expiry / Date Details */}
-                          <div className="space-y-1 text-xs text-retro-text/60">
-                            {inst.usage === '使用中' && pao && (
-                              <div className={`p-2 rounded-lg text-[11px] font-bold flex flex-col gap-0.5 ${pao.isExpired ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-green-50 text-green-600'}`}>
-                                <div className="flex items-center gap-1">
-                                  <ClockIcon className="w-3.5 h-3.5" />
-                                  <span>開封建議可用 {inst.paoMonths} 個月 (開封日: {inst.openedDate?.replace(/-/g, '.')})</span>
-                                </div>
-                                <span>
-                                  建議過期日: {pao.expiryDate.replace(/-/g, '.')}
-                                  {pao.isExpired ? ` (已開封過期 ${pao.daysOverdue} 天)` : ` (開封剩餘 ${pao.daysLeft} 天)`}
+                          {/* PAO Expiry / Date Details Grid */}
+                          <div className="rounded-xl border border-retro-text/10 overflow-hidden bg-stone-50/50 mt-2">
+                            {/* Row 1: Expiry */}
+                            <div className="grid grid-cols-3 divide-x divide-retro-text/10 border-b border-retro-text/10 bg-retro-bg/30 text-[10px] font-bold text-retro-text/60">
+                              <div className="px-3 py-1.5 flex items-center">數量 / 容量</div>
+                              <div className="px-3 py-1.5 flex items-center">有效期限</div>
+                              <div className="px-3 py-1.5 flex items-center">剩餘</div>
+                            </div>
+                            <div className="grid grid-cols-3 divide-x divide-retro-text/10 bg-white text-xs font-bold text-retro-text">
+                              <div className="px-3 py-2.5 flex items-center">{inst.qty} / {inst.capacity || '-'}</div>
+                              <div className="px-3 py-2.5 flex items-center">{inst.expiry ? inst.expiry : '-'}</div>
+                              <div className="px-3 py-2.5 flex items-center justify-between">
+                                <span className={isUrgent ? 'text-red-500' : ''}>
+                                  {daysLeft !== 9999 ? `${daysLeft} 天` : '-'}
                                 </span>
                               </div>
-                            )}
-
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-retro-text/70 pt-1 font-mono">
-                              <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                              <span>有效期限 (到期日): {inst.expiry ? inst.expiry.replace(/-/g, '.') : '未設定'}</span>
-                              {inst.expiry && daysLeft !== 9999 && (
-                                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] ${isUrgent ? 'bg-red-100 text-red-600' : 'bg-stone-100 text-stone-600'}`}>
-                                  {isUrgent ? `急需使用 (剩 ${daysLeft} 天)` : `剩 ${daysLeft} 天`}
-                                </span>
-                              )}
                             </div>
+
+                            {/* Row 2: PAO (Only if in use and has PAO) */}
+                            {inst.usage === '使用中' && inst.paoMonths && inst.openedDate && pao && (
+                              <>
+                                <div className={`grid grid-cols-3 divide-x divide-retro-text/10 border-b border-t border-retro-text/10 text-[10px] font-bold ${pao.isExpired ? 'bg-red-50 text-red-600/70' : 'bg-retro-bg/30 text-retro-text/60'}`}>
+                                  <div className="px-3 py-1.5 flex items-center">開封日期</div>
+                                  <div className="px-3 py-1.5 flex items-center">使用期限</div>
+                                  <div className="px-3 py-1.5 flex items-center">剩餘</div>
+                                </div>
+                                <div className={`grid grid-cols-3 divide-x divide-retro-text/10 text-xs font-bold ${pao.isExpired ? 'bg-red-50/50 text-red-600' : 'bg-white text-retro-text'}`}>
+                                  <div className="px-3 py-2.5 flex items-center">{inst.openedDate}</div>
+                                  <div className="px-3 py-2.5 flex items-center">{pao.expiryDate}</div>
+                                  <div className="px-3 py-2.5 flex items-center justify-between">
+                                    <span>
+                                      {pao.isExpired ? `${pao.daysOverdue} 天 (過期)` : `${pao.daysLeft} 天`}
+                                    </span>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                       );

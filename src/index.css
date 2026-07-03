@@ -2,8 +2,8 @@
 @import "tailwindcss";
 
 :root {
-  --theme-bg: #EAD7C3;
-  --theme-card: #F3EBE1;
+  --theme-bg: #F5EAE0;
+  --theme-card: #FAF4EE;
   --theme-primary: #8B9D83;
   --theme-secondary: #C57B57;
   --theme-text: #3C3228;
@@ -17,8 +17,6 @@
   --theme-primary: #FF7E67;
   --theme-secondary: #7AC7C4;
   --theme-text: #4A4A4A;
-  --theme-font-sans: "DotGothic16", ui-monospace, SFMono-Regular, monospace;
-  --theme-font-display: "DotGothic16", ui-monospace, SFMono-Regular, monospace;
 }
 
 @theme {
@@ -95,13 +93,15 @@ body {
   background-color: #FFFFFF !important;
 }
 
-[data-theme="pixel"] nav button {
+[data-theme="pixel"] nav button,
+[data-theme="pixel"] button.action-btn-no-pixel {
   border: none !important;
   box-shadow: none !important;
   background-color: transparent !important;
 }
 
-[data-theme="pixel"] nav button:active {
+[data-theme="pixel"] nav button:active,
+[data-theme="pixel"] button.action-btn-no-pixel:active {
   transform: scale(0.95) !important;
 }
 
