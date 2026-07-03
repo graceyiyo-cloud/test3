@@ -96,9 +96,9 @@ function CategoryIcon({ name, className = "w-5 h-5" }: { name: string; className
 
 function MainApp({ user }: { user: User }) {
   // --- Core State ---
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
@@ -115,12 +115,16 @@ function MainApp({ user }: { user: User }) {
           if (data.categories) {
             loadedCategories = data.categories;
             setCategories(data.categories);
+          } else {
+            setCategories(INITIAL_CATEGORIES);
           }
           
           // Legacy migration check: if products exist in the root doc, use them initially
           if (data.products && data.products.length > 0) {
             setProducts(data.products);
           }
+        } else {
+          setCategories(INITIAL_CATEGORIES);
         }
         
         // Load products from subcollection
@@ -134,6 +138,9 @@ function MainApp({ user }: { user: User }) {
             subProducts.push(docSnap.data() as Product);
           });
           setProducts(subProducts);
+        } else if (!docSnap.exists()) {
+          // If no user doc exists and no products exist, initialize with defaults
+          setProducts(INITIAL_PRODUCTS);
         }
 
       } catch (err) {
@@ -178,7 +185,8 @@ function MainApp({ user }: { user: User }) {
           const existing = existingData.get(product.id);
           // Only write if it's new or the data has changed
           if (!existing || JSON.stringify(existing) !== JSON.stringify(product)) {
-            writePromises.push(setDoc(doc(db, 'users', user.uid, 'products', product.id), product));
+            const cleanProduct = JSON.parse(JSON.stringify(product));
+            writePromises.push(setDoc(doc(db, 'users', user.uid, 'products', product.id), cleanProduct));
           }
         }
 
@@ -1305,6 +1313,17 @@ function MainApp({ user }: { user: User }) {
   // Get current subcategories for selected form category
   const currentFormCategoryObj = categories.find(c => c.id === formCategory);
   const currentFormSubcategories = currentFormCategoryObj ? currentFormCategoryObj.subcategories : [];
+
+  if (!isDataLoaded) {
+    return (
+      <div className="min-h-screen bg-retro-bg flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <Sparkles className="w-8 h-8 text-retro-primary animate-pulse" />
+          <span className="text-retro-text font-bold text-sm tracking-wider uppercase">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-retro-bg text-retro-text relative pb-24 font-sans select-none antialiased">
