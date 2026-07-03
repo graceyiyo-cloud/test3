@@ -1797,7 +1797,7 @@ ${categoryOptions}
                           <img 
                             src={formPhoto} 
                             alt="預覽" 
-                            className="w-10 h-10 rounded-lg object-cover border border-retro-text/10"
+                            className="h-10 w-auto max-w-[4rem] rounded-lg object-cover border border-retro-text/10"
                           />
                           <button 
                             type="button"
@@ -2717,7 +2717,7 @@ ${categoryOptions}
                   src={selectedDetailProduct.photo} 
                   alt={selectedDetailProduct.name}
                   onClick={() => setFullscreenImage(selectedDetailProduct.photo!)}
-                  className="w-14 h-18 rounded-xl object-cover border border-retro-text/10 shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                  className="h-18 w-auto max-w-[8rem] rounded-xl object-cover border border-retro-text/10 shadow-sm cursor-pointer hover:scale-105 transition-transform"
                 />
               ) : (
                 <div className="w-14 h-18 rounded-xl bg-retro-primary/10 border border-dashed border-retro-primary/30 flex items-center justify-center text-retro-primary flex-shrink-0">
@@ -3343,7 +3343,7 @@ function ProductCard({
                 onImageClick(product.photo!);
               }
             }}
-            className="w-11 h-14 rounded-lg object-cover border border-retro-text/10 shadow-sm group-hover:scale-105 transition-transform"
+            className="h-14 w-auto max-w-[6rem] rounded-lg object-cover border border-retro-text/10 shadow-sm group-hover:scale-105 transition-transform"
           />
         ) : (
           <div className="w-11 h-14 rounded-lg bg-retro-primary/10 border border-dashed border-retro-primary/30 flex items-center justify-center text-retro-primary flex-shrink-0">

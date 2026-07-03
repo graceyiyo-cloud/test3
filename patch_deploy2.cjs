@@ -1,4 +1,6 @@
-# Simple workflow for deploying static content to GitHub Pages
+const fs = require('fs');
+
+let yaml = `# Simple workflow for deploying static content to GitHub Pages
 name: Deploy static content to Pages
 
 on:
@@ -25,7 +27,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: \${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -43,10 +45,13 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+          name: github-pages-\${{ github.run_id }}-\${{ github.run_attempt }}
           path: './dist'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
         with:
-          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact_name: github-pages-\${{ github.run_id }}-\${{ github.run_attempt }}
+`;
+
+fs.writeFileSync('.github/workflows/deploy.yml', yaml);
