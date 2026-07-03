@@ -1087,6 +1087,8 @@ function MainApp({ user }: { user: User }) {
     else if (cap.endsWith('g')) { unit = 'g'; cap = cap.slice(0, -1); }
     else if (cap.endsWith('個')) { unit = '個'; cap = cap.slice(0, -1); }
     else if (cap.endsWith('罐')) { unit = '罐'; cap = cap.slice(0, -1); }
+    else if (cap.endsWith('錠')) { unit = '錠'; cap = cap.slice(0, -1); }
+    else if (cap.endsWith('顆')) { unit = '顆'; cap = cap.slice(0, -1); }
     setFormCapacity(cap.trim());
     setFormCapacityUnit(unit);
 
@@ -1354,7 +1356,7 @@ function MainApp({ user }: { user: User }) {
       {/* 1. App Header */}
       <header className="px-5 py-5 pt-[max(1.25rem,env(safe-area-inset-top))] flex justify-between items-center bg-retro-bg/90 backdrop-blur-sm sticky top-0 z-40 border-b border-retro-text/10 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold font-display tracking-tight flex items-center gap-2">
-          <span>化妝品管理系統</span>
+          <span>用品管理系統</span>
         </h1>
         <div className="flex gap-2">
           <button 
@@ -1699,6 +1701,8 @@ function MainApp({ user }: { user: User }) {
                     <option value="g">g</option>
                     <option value="個">個</option>
                     <option value="罐">罐</option>
+                    <option value="錠">錠</option>
+                    <option value="顆">顆</option>
                   </select>
                 </div>
               </div>
@@ -3045,7 +3049,7 @@ export default function App() {
           <div className="w-16 h-16 bg-retro-primary/10 rounded-2xl flex items-center justify-center text-retro-primary mb-6">
             <Sparkles className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold font-display text-retro-text mb-2">化妝品管理系統</h1>
+          <h1 className="text-2xl font-bold font-display text-retro-text mb-2">用品管理系統</h1>
           <p className="text-retro-text/60 text-sm mb-8">
             精緻復古底片風格的化妝品與保養品庫存管理系統，請登入以存取專屬您的帳號資料。
           </p>
