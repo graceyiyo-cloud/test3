@@ -213,20 +213,22 @@ function MainApp({ user }: { user: User }) {
     return localStorage.getItem('cosmetics_gemini_api_key') || '';
   });
 
-  const [appTheme, setAppTheme] = useState<'retro' | 'pixel'>(() => {
-    return (localStorage.getItem('cosmetics_theme') as 'retro' | 'pixel') || 'retro';
+  const [appTheme, setAppTheme] = useState<'retro' | 'pixel' | 'minimal'>(() => {
+    return (localStorage.getItem('cosmetics_theme') as 'retro' | 'pixel' | 'minimal') || 'retro';
   });
 
   useEffect(() => {
     const root = document.documentElement;
     if (appTheme === 'pixel') {
       root.setAttribute('data-theme', 'pixel');
+    } else if (appTheme === 'minimal') {
+      root.setAttribute('data-theme', 'minimal');
     } else {
       root.removeAttribute('data-theme');
     }
   }, [appTheme]);
 
-  const handleThemeChange = (theme: 'retro' | 'pixel') => {
+  const handleThemeChange = (theme: 'retro' | 'pixel' | 'minimal') => {
     setAppTheme(theme);
     localStorage.setItem('cosmetics_theme', theme);
   };
@@ -342,6 +344,35 @@ function MainApp({ user }: { user: User }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const formPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Hardware Back Button Handling ---
+  useEffect(() => {
+    const isOverlayOpen = !!(showAddForm || selectedDetailProduct || fullscreenImage || cropImageSrc || confirmDialog || (currentTab === 'settings' && settingsView !== 'menu'));
+
+    if (isOverlayOpen) {
+      if (window.location.hash !== '#overlay') {
+        window.history.pushState(null, '', '#overlay');
+      }
+    } else {
+      if (window.location.hash === '#overlay') {
+        window.history.back();
+      }
+    }
+
+    const handleHashChange = () => {
+      if (window.location.hash !== '#overlay') {
+        setShowAddForm(false);
+        setSelectedDetailProduct(null);
+        setFullscreenImage(null);
+        setCropImageSrc(null);
+        setConfirmDialog(null);
+        if (settingsView !== 'menu') setSettingsView('menu');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [showAddForm, selectedDetailProduct, fullscreenImage, cropImageSrc, confirmDialog, currentTab, settingsView]);
 
   // --- Side Effects & Persistence ---
   useEffect(() => {
@@ -2024,6 +2055,10 @@ ${categoryOptions}
                         onClick={() => handleThemeChange('pixel')}
                         className={`flex-1 py-2.5 text-sm font-bold rounded-xl border transition-all cursor-pointer ${appTheme === 'pixel' ? 'border-retro-primary bg-retro-primary/10 text-retro-primary shadow-sm' : 'border-retro-text/10 bg-white text-retro-text/50 hover:text-retro-text hover:border-retro-text/20'}`}
                       >像素風</button>
+                      <button 
+                        onClick={() => handleThemeChange('minimal')}
+                        className={`flex-1 py-2.5 text-sm font-bold rounded-xl border transition-all cursor-pointer ${appTheme === 'minimal' ? 'border-retro-primary bg-retro-primary/10 text-retro-primary shadow-sm' : 'border-retro-text/10 bg-white text-retro-text/50 hover:text-retro-text hover:border-retro-text/20'}`}
+                      >文青風</button>
                     </div>
                   </div>
 
@@ -2324,7 +2359,7 @@ ${categoryOptions}
                   const archivedProducts = products.filter(p => p.status === 'archived' && (searchKeyword ? p.name.includes(searchKeyword) || p.brand.includes(searchKeyword) : true));
                   if (archivedProducts.length === 0) {
                     return (
-                      <div className="text-center py-12 bg-retro-card rounded-2xl border border-retro-text/5">
+                      <div className="text-center py-12 bg-retro-card rounded-2xl border border-retro-text/10">
                         <p className="text-sm text-retro-text/50 font-medium">尚無符合的封存商品</p>
                       </div>
                     );
@@ -2387,7 +2422,7 @@ ${categoryOptions}
 
               if (nonAndEmptyGroups.length === 0) {
                 return (
-                  <div className="text-center py-12 bg-retro-card rounded-2xl border border-retro-text/5">
+                  <div className="text-center py-12 bg-retro-card rounded-2xl border border-retro-text/10">
                     <p className="text-sm text-retro-text/50 font-semibold">此分類下尚無符合商品</p>
                     <button 
                       onClick={() => {
@@ -2651,7 +2686,7 @@ ${categoryOptions}
                       const pao = calculatePaoExpiry(inst.openedDate, inst.paoMonths);
 
                       return (
-                        <div key={inst.id} className="p-3 bg-white rounded-xl space-y-2 shadow-xs">
+                        <div key={inst.id} className="p-3 bg-white rounded-xl border border-retro-text/10 space-y-2 shadow-xs">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-bold text-retro-text bg-retro-bg/40 px-2 py-0.5 rounded-lg flex items-center gap-1">

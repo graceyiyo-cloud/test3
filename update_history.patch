@@ -1,0 +1,36 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -348,6 +348,29 @@
+   const formPhotoInputRef = useRef<HTMLInputElement>(null);
+ 
+   // --- Side Effects & Persistence ---
++  useEffect(() => {
++    const isOverlayOpen = !!(showAddForm || selectedDetailProduct || fullscreenImage || cropImageSrc || confirmDialog || (currentTab === 'settings' && settingsView !== 'menu'));
++
++    if (isOverlayOpen) {
++      if (window.location.hash !== '#overlay') {
++        window.history.pushState(null, '', '#overlay');
++      }
++    } else {
++      if (window.location.hash === '#overlay') {
++        window.history.back();
++      }
++    }
++
++    const handleHashChange = () => {
++      if (window.location.hash !== '#overlay') {
++        setShowAddForm(false);
++        setSelectedDetailProduct(null);
++        setFullscreenImage(null);
++        setCropImageSrc(null);
++        setConfirmDialog(null);
++        if (settingsView !== 'menu') setSettingsView('menu');
++      }
++    };
++
++    window.addEventListener('hashchange', handleHashChange);
++    return () => window.removeEventListener('hashchange', handleHashChange);
++  }, [showAddForm, selectedDetailProduct, fullscreenImage, cropImageSrc, confirmDialog, currentTab, settingsView]);
++
+   useEffect(() => {
+     // Re-evaluate expired PAO products whenever products change
