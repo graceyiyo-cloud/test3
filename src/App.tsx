@@ -2436,13 +2436,14 @@ ${categoryOptions}
                       {archivedProducts.map(prod => (
                         <div key={prod.id}>
                           <ProductCard 
-                            product={prod} 
-                            onViewDetail={setSelectedDetailProduct}
-                            onEdit={handleEditInstanceTrigger}
-                            onArchive={handleArchiveInstance}
-                            onAddAnother={handleAddAnotherInstanceTrigger}
-                            onImageClick={setFullscreenImage}
-                          />
+                              product={prod} 
+                              onViewDetail={setSelectedDetailProduct}
+                              onEdit={handleEditInstanceTrigger}
+                              onArchive={handleArchiveInstance}
+                              onAddAnother={handleAddAnotherInstanceTrigger}
+                              onImageClick={setFullscreenImage}
+                              categoryIcon={categories.find(c => c.id === prod.category)?.icon || 'sparkles'}
+                            />
                         </div>
                       ))}
                     </div>
@@ -2529,13 +2530,14 @@ ${categoryOptions}
                           {groupProds.map(prod => (
                             <div key={prod.id}>
                               <ProductCard 
-                                product={prod} 
-                                onViewDetail={setSelectedDetailProduct}
-                                onEdit={handleEditInstanceTrigger}
-                                onArchive={handleArchiveInstance}
-                                onAddAnother={handleAddAnotherInstanceTrigger}
-                                onImageClick={setFullscreenImage}
-                              />
+                              product={prod} 
+                              onViewDetail={setSelectedDetailProduct}
+                              onEdit={handleEditInstanceTrigger}
+                              onArchive={handleArchiveInstance}
+                              onAddAnother={handleAddAnotherInstanceTrigger}
+                              onImageClick={setFullscreenImage}
+                              categoryIcon={categories.find(c => c.id === prod.category)?.icon || 'sparkles'}
+                            />
                             </div>
                           ))}
                         </div>
@@ -2595,7 +2597,7 @@ ${categoryOptions}
                 />
               ) : (
                 <div className="w-14 h-18 rounded-xl bg-retro-primary/10 border border-dashed border-retro-primary/30 flex items-center justify-center text-retro-primary flex-shrink-0">
-                  <Camera className="w-6 h-6 opacity-40" />
+                  <CategoryIcon name={categories.find(c => c.id === selectedDetailProduct.category)?.icon || 'sparkles'} className="w-6 h-6 opacity-40" />
                 </div>
               )}
               
@@ -3139,7 +3141,8 @@ function ProductCard({
   onEdit, 
   onArchive,
   onAddAnother,
-  onImageClick
+  onImageClick,
+  categoryIcon
 }: { 
   product: Product; 
   onViewDetail: (prod: Product) => void; 
@@ -3147,6 +3150,7 @@ function ProductCard({
   onArchive: (prodId: string, instId: string) => void;
   onAddAnother: (prod: Product) => void;
   onImageClick?: (url: string) => void;
+  categoryIcon: string;
 }) {
   const instances = product.instances;
   const isArchived = product.status === 'archived';
@@ -3192,7 +3196,7 @@ function ProductCard({
           />
         ) : (
           <div className="w-11 h-14 rounded-lg bg-retro-primary/10 border border-dashed border-retro-primary/30 flex items-center justify-center text-retro-primary flex-shrink-0">
-            <Camera className="w-5 h-5 opacity-40" />
+            <CategoryIcon name={categoryIcon} className="w-5 h-5 opacity-40" />
           </div>
         )}
 
