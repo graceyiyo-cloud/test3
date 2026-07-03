@@ -1,21 +1,65 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=DotGothic16&display=swap');
 @import "tailwindcss";
 
+:root {
+  --theme-bg: #EAD7C3;
+  --theme-card: #F3EBE1;
+  --theme-primary: #8B9D83;
+  --theme-secondary: #C57B57;
+  --theme-text: #3C3228;
+  --theme-font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --theme-font-display: "Space Grotesk", sans-serif;
+}
+
+[data-theme="pixel"] {
+  --theme-bg: #000000;
+  --theme-card: #1a1a1a;
+  --theme-primary: #39ff14; /* Neon green */
+  --theme-secondary: #ff00ff; /* Magenta */
+  --theme-text: #ffffff;
+  --theme-font-sans: "DotGothic16", ui-monospace, SFMono-Regular, monospace;
+  --theme-font-display: "DotGothic16", ui-monospace, SFMono-Regular, monospace;
+}
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: var(--theme-font-sans);
+  --font-display: var(--theme-font-display);
   
-  --color-retro-bg: #EAD7C3;
-  --color-retro-card: #F3EBE1;
-  --color-retro-primary: #8B9D83;
-  --color-retro-secondary: #C57B57;
-  --color-retro-text: #3C3228;
+  --color-retro-bg: var(--theme-bg);
+  --color-retro-card: var(--theme-card);
+  --color-retro-primary: var(--theme-primary);
+  --color-retro-secondary: var(--theme-secondary);
+  --color-retro-text: var(--theme-text);
 }
 
 body {
   background-color: var(--color-retro-bg);
   color: var(--color-retro-text);
   font-family: var(--font-sans);
+}
+
+[data-theme="pixel"] * {
+  border-radius: 0 !important;
+}
+
+[data-theme="pixel"] button,
+[data-theme="pixel"] input,
+[data-theme="pixel"] select,
+[data-theme="pixel"] .p-4,
+[data-theme="pixel"] .p-5 {
+  border: 2px solid var(--theme-primary) !important;
+  box-shadow: 4px 4px 0 var(--theme-primary) !important;
+}
+
+[data-theme="pixel"] button:active {
+  box-shadow: 0px 0px 0 var(--theme-primary) !important;
+  transform: translate(4px, 4px) !important;
+}
+
+[data-theme="pixel"] .shadow-sm,
+[data-theme="pixel"] .shadow-md,
+[data-theme="pixel"] .shadow-xl {
+  box-shadow: 4px 4px 0 var(--theme-primary) !important;
 }
 
 .pb-safe {

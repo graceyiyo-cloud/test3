@@ -213,6 +213,24 @@ function MainApp({ user }: { user: User }) {
     return localStorage.getItem('cosmetics_gemini_api_key') || '';
   });
 
+  const [appTheme, setAppTheme] = useState<'retro' | 'pixel'>(() => {
+    return (localStorage.getItem('cosmetics_theme') as 'retro' | 'pixel') || 'retro';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (appTheme === 'pixel') {
+      root.setAttribute('data-theme', 'pixel');
+    } else {
+      root.removeAttribute('data-theme');
+    }
+  }, [appTheme]);
+
+  const handleThemeChange = (theme: 'retro' | 'pixel') => {
+    setAppTheme(theme);
+    localStorage.setItem('cosmetics_theme', theme);
+  };
+
   const [appFontSize, setAppFontSize] = useState<'small' | 'medium' | 'large'>(() => {
     return (localStorage.getItem('cosmetics_font_size') as 'small' | 'medium' | 'large') || 'small';
   });
@@ -1919,6 +1937,25 @@ function MainApp({ user }: { user: User }) {
                     </div>
                     <ChevronRight className="w-5 h-5 text-retro-text/30 group-hover:text-retro-primary group-hover:translate-x-1 transition-all" />
                   </button>
+
+                  <div className="p-4 bg-white border border-retro-text/10 rounded-2xl shadow-sm flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-retro-text text-sm">視覺風格設定</span>
+                    </div>
+                    <div className="flex bg-retro-bg/30 p-1 rounded-xl">
+                      <button 
+                        onClick={() => handleThemeChange('retro')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appTheme === 'retro' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                      >復古風</button>
+                      <button 
+                        onClick={() => handleThemeChange('pixel')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appTheme === 'pixel' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                      >像素風</button>
+                    </div>
+                  </div>
 
                   <div className="p-4 bg-white border border-retro-text/10 rounded-2xl shadow-sm flex flex-col gap-4">
                     <div className="flex items-center gap-3">
