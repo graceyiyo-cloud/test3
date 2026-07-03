@@ -33,6 +33,8 @@ import {
   ShoppingCart,
   ChevronRight,
   History,
+  Type,
+  ImageIcon,
   LucideIcon
 } from 'lucide-react';
 import { Category, Product, ProductInstance } from './types';
@@ -211,6 +213,26 @@ function MainApp({ user }: { user: User }) {
     return localStorage.getItem('cosmetics_gemini_api_key') || '';
   });
 
+  const [appFontSize, setAppFontSize] = useState<'small' | 'medium' | 'large'>(() => {
+    return (localStorage.getItem('cosmetics_font_size') as 'small' | 'medium' | 'large') || 'small';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (appFontSize === 'small') {
+      root.style.fontSize = '16px';
+    } else if (appFontSize === 'medium') {
+      root.style.fontSize = '18px';
+    } else if (appFontSize === 'large') {
+      root.style.fontSize = '20px';
+    }
+  }, [appFontSize]);
+
+  const handleFontSizeChange = (size: 'small' | 'medium' | 'large') => {
+    setAppFontSize(size);
+    localStorage.setItem('cosmetics_font_size', size);
+  };
+
   const [currentTab, setCurrentTab] = useState<string>(() => {
     return categories[0]?.id || 'makeup';
   });
@@ -300,6 +322,7 @@ function MainApp({ user }: { user: User }) {
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const formPhotoInputRef = useRef<HTMLInputElement>(null);
 
   // --- Side Effects & Persistence ---
@@ -317,6 +340,7 @@ function MainApp({ user }: { user: User }) {
 
   // Sync tab with updated categories if current tab's category was deleted
   useEffect(() => {
+    if (!isDataLoaded) return;
     if (currentTab !== 'settings' && currentTab !== 'history' && !categories.some(c => c.id === currentTab)) {
       if (categories.length > 0) {
         setCurrentTab(categories[0].id);
@@ -324,7 +348,7 @@ function MainApp({ user }: { user: User }) {
         setCurrentTab('settings');
       }
     }
-  }, [categories, currentTab]);
+  }, [categories, currentTab, isDataLoaded]);
 
   // Handle Usage status switch - auto fill open date if usage is '使用中' and it is blank
   useEffect(() => {
@@ -459,7 +483,7 @@ function MainApp({ user }: { user: User }) {
         contents: [{
           role: "user",
           parts: [
-            { text: "分析此化妝品/保養品/商品圖片，辨識出品牌名稱（brand）與產品全名（name），並判斷類別（category）。回傳嚴格的 JSON 格式，包含三個 key: 'brand' (字串), 'name' (字串), 'category' (字串，請從現有的分類推測，盡量回傳英文id如 makeup, skincare, supplement)。只回傳純 JSON 內容即可，不要包裝 markdown 三個反引號。" },
+            { text: "分析此化妝品/保養品/商品圖片，辨識出品牌名稱（brand）與產品全名（name），並判斷類別（category）。如果商品名稱不是中文（如日文、英文、韓文等），請將產品全名（name）翻譯成繁體中文。回傳嚴格的 JSON 格式，包含三個 key: 'brand' (字串), 'name' (字串), 'category' (字串，請從現有的分類推測，盡量回傳英文id如 makeup, skincare, supplement)。只回傳純 JSON 內容即可，不要包裝 markdown 三個反引號。" },
             { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64String } }
           ]
         }],
@@ -1334,6 +1358,13 @@ function MainApp({ user }: { user: User }) {
         </h1>
         <div className="flex gap-2">
           <button 
+            onClick={() => galleryInputRef.current?.click()}
+            className="w-11 h-11 rounded-full bg-retro-primary text-retro-card flex items-center justify-center cursor-pointer shadow-md active:scale-95 transition-all hover:brightness-105"
+            title="照片辨識新增"
+          >
+            <ImageIcon className="w-5 h-5" />
+          </button>
+          <button 
             onClick={() => fileInputRef.current?.click()}
             className="w-11 h-11 rounded-full bg-retro-primary text-retro-card flex items-center justify-center cursor-pointer shadow-md active:scale-95 transition-all hover:brightness-105"
             title="拍照辨識新增"
@@ -1368,6 +1399,13 @@ function MainApp({ user }: { user: User }) {
         onChange={(e) => handlePhotoUpload(e, false)}
         accept="image/*" 
         capture="environment" 
+        className="hidden"
+      />
+      <input 
+        type="file" 
+        ref={galleryInputRef}
+        onChange={(e) => handlePhotoUpload(e, false)}
+        accept="image/*" 
         className="hidden"
       />
 
@@ -1628,7 +1666,7 @@ function MainApp({ user }: { user: User }) {
               {!isEditingMaster && (
                 <div className={`space-y-4 ${!editingInstanceId && !isAddingInstanceToExisting ? 'pt-4 mt-4 border-t border-retro-text/10' : ''}`}>
                   {/* Quantity and Capacity */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-retro-text/75 mb-1">數量</label>
                   <input 
@@ -1641,26 +1679,27 @@ function MainApp({ user }: { user: User }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-retro-text/75 mb-1">容量與單位</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="例如: 30"
-                      value={formCapacity}
-                      onChange={(e) => setFormCapacity(e.target.value)}
-                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                    />
-                    <select
-                      value={formCapacityUnit}
-                      onChange={(e) => setFormCapacityUnit(e.target.value)}
-                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                    >
-                      <option value="ml">ml</option>
-                      <option value="g">g</option>
-                      <option value="個">個</option>
-                      <option value="罐">罐</option>
-                    </select>
-                  </div>
+                  <label className="block text-xs font-bold text-retro-text/75 mb-1">容量</label>
+                  <input 
+                    type="text" 
+                    placeholder="例如: 30"
+                    value={formCapacity}
+                    onChange={(e) => setFormCapacity(e.target.value)}
+                    className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-retro-text/75 mb-1">單位</label>
+                  <select
+                    value={formCapacityUnit}
+                    onChange={(e) => setFormCapacityUnit(e.target.value)}
+                    className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                  >
+                    <option value="ml">ml</option>
+                    <option value="g">g</option>
+                    <option value="個">個</option>
+                    <option value="罐">罐</option>
+                  </select>
                 </div>
               </div>
 
@@ -1876,6 +1915,29 @@ function MainApp({ user }: { user: User }) {
                     </div>
                     <ChevronRight className="w-5 h-5 text-retro-text/30 group-hover:text-retro-primary group-hover:translate-x-1 transition-all" />
                   </button>
+
+                  <div className="p-4 bg-white border border-retro-text/10 rounded-2xl shadow-sm flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
+                        <Type className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-retro-text text-sm">字體大小設定</span>
+                    </div>
+                    <div className="flex bg-retro-bg/30 p-1 rounded-xl">
+                      <button 
+                        onClick={() => handleFontSizeChange('small')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appFontSize === 'small' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                      >小</button>
+                      <button 
+                        onClick={() => handleFontSizeChange('medium')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appFontSize === 'medium' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                      >中</button>
+                      <button 
+                        onClick={() => handleFontSizeChange('large')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appFontSize === 'large' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                      >大</button>
+                    </div>
+                  </div>
 
                   <div className="pt-4 border-t border-retro-text/10 mt-4">
                     <button onClick={logOut} className="w-full p-4 bg-red-50 border border-red-100 rounded-2xl shadow-sm hover:border-red-200 transition-all flex items-center justify-center group cursor-pointer">
