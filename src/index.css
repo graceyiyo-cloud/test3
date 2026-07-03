@@ -12,11 +12,11 @@
 }
 
 [data-theme="pixel"] {
-  --theme-bg: #000000;
-  --theme-card: #1a1a1a;
-  --theme-primary: #39ff14; /* Neon green */
-  --theme-secondary: #ff00ff; /* Magenta */
-  --theme-text: #ffffff;
+  --theme-bg: #FFE5E5;
+  --theme-card: #FFFFFF;
+  --theme-primary: #FF7E67;
+  --theme-secondary: #7AC7C4;
+  --theme-text: #4A4A4A;
   --theme-font-sans: "DotGothic16", ui-monospace, SFMono-Regular, monospace;
   --theme-font-display: "DotGothic16", ui-monospace, SFMono-Regular, monospace;
 }
@@ -45,21 +45,64 @@ body {
 [data-theme="pixel"] button,
 [data-theme="pixel"] input,
 [data-theme="pixel"] select,
-[data-theme="pixel"] .p-4,
-[data-theme="pixel"] .p-5 {
-  border: 2px solid var(--theme-primary) !important;
-  box-shadow: 4px 4px 0 var(--theme-primary) !important;
-}
-
-[data-theme="pixel"] button:active {
-  box-shadow: 0px 0px 0 var(--theme-primary) !important;
-  transform: translate(4px, 4px) !important;
+[data-theme="pixel"] textarea,
+[data-theme="pixel"] .bg-white,
+[data-theme="pixel"] .bg-retro-card,
+[data-theme="pixel"] .bg-retro-bg\/30 {
+  border: 2px solid var(--theme-text) !important;
 }
 
 [data-theme="pixel"] .shadow-sm,
+[data-theme="pixel"] .shadow,
 [data-theme="pixel"] .shadow-md,
-[data-theme="pixel"] .shadow-xl {
-  box-shadow: 4px 4px 0 var(--theme-primary) !important;
+[data-theme="pixel"] .shadow-lg,
+[data-theme="pixel"] .shadow-xl,
+[data-theme="pixel"] button {
+  box-shadow: 3px 3px 0px var(--theme-text) !important;
+  transition: transform 0.1s, box-shadow 0.1s !important;
+}
+
+[data-theme="pixel"] button:active {
+  transform: translate(3px, 3px) !important;
+  box-shadow: 0px 0px 0px var(--theme-text) !important;
+}
+
+[data-theme="pixel"] .border-retro-text\/10,
+[data-theme="pixel"] .border-retro-text\/5,
+[data-theme="pixel"] .border-retro-primary\/30 {
+  border-color: var(--theme-text) !important;
+}
+
+[data-theme="pixel"] .border,
+[data-theme="pixel"] .border-b,
+[data-theme="pixel"] .border-t {
+  border-width: 2px !important;
+}
+
+[data-theme="pixel"] input,
+[data-theme="pixel"] select {
+  box-shadow: 2px 2px 0px var(--theme-text) !important;
+}
+
+[data-theme="pixel"] .backdrop-blur-sm,
+[data-theme="pixel"] .backdrop-blur-md {
+  backdrop-filter: none !important;
+  background-color: var(--theme-bg) !important;
+}
+
+[data-theme="pixel"] .bg-white\/50,
+[data-theme="pixel"] .bg-retro-bg\/90 {
+  background-color: #FFFFFF !important;
+}
+
+[data-theme="pixel"] nav button {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+[data-theme="pixel"] nav button:active {
+  transform: scale(0.95) !important;
 }
 
 .pb-safe {
