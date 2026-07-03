@@ -345,34 +345,101 @@ function MainApp({ user }: { user: User }) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const formPhotoInputRef = useRef<HTMLInputElement>(null);
 
+  
+  
   // --- Hardware Back Button Handling ---
+  const expectedHash = confirmDialog ? '#confirm' 
+    : cropImageSrc ? '#crop' 
+    : fullscreenImage ? '#image' 
+    : showAddForm ? '#add'
+    : selectedDetailProduct ? '#detail'
+    : (currentTab === 'settings' && settingsView === 'category') ? '#settings-category'
+    : (currentTab === 'settings' && settingsView === 'history') ? '#settings-history'
+    : (currentTab === 'settings' && settingsView === 'apikey') ? '#settings-apikey'
+    : '';
+
+  const getHashDepth = (hash: string) => {
+    if (hash === '#confirm') return 5;
+    if (hash === '#crop' || hash === '#image') return 4;
+    if (hash === '#add' || hash === '#detail') return 3;
+    if (hash.startsWith('#settings-')) return 2;
+    return 1;
+  };
+
   useEffect(() => {
-    const isOverlayOpen = !!(showAddForm || selectedDetailProduct || fullscreenImage || cropImageSrc || confirmDialog || (currentTab === 'settings' && settingsView !== 'menu'));
-
-    if (isOverlayOpen) {
-      if (window.location.hash !== '#overlay') {
-        window.history.pushState(null, '', '#overlay');
+    const syncUrlToState = () => {
+      const currentHash = window.location.hash;
+      if (currentHash !== expectedHash) {
+        const expectedDepth = getHashDepth(expectedHash);
+        const currentDepth = getHashDepth(currentHash);
+        
+        if (expectedDepth > currentDepth) {
+          window.history.pushState(null, '', expectedHash);
+        } else if (expectedDepth < currentDepth) {
+          // Unwind the stack until it matches
+          window.history.back();
+        } else {
+          window.history.replaceState(null, '', expectedHash);
+        }
       }
-    } else {
-      if (window.location.hash === '#overlay') {
-        window.history.back();
-      }
-    }
+    };
+    
+    // Run initially and whenever expectedHash changes
+    syncUrlToState();
+    
+    // Also run when hash changes (e.g. from a back() call unwinding the stack)
+    window.addEventListener('hashchange', syncUrlToState);
+    return () => window.removeEventListener('hashchange', syncUrlToState);
+  }, [expectedHash]);
 
-    const handleHashChange = () => {
-      if (window.location.hash !== '#overlay') {
+  useEffect(() => {
+    const handlePopState = () => {
+      const hash = window.location.hash;
+      
+      if (hash === '' || hash === '#') {
+        setConfirmDialog(null);
+        setCropImageSrc(null);
+        setFullscreenImage(null);
         setShowAddForm(false);
         setSelectedDetailProduct(null);
-        setFullscreenImage(null);
-        setCropImageSrc(null);
-        setConfirmDialog(null);
         if (settingsView !== 'menu') setSettingsView('menu');
+      } else if (hash === '#settings-category') {
+        setConfirmDialog(null);
+        setCropImageSrc(null);
+        setFullscreenImage(null);
+        setShowAddForm(false);
+        setSelectedDetailProduct(null);
+        if (settingsView !== 'category') setSettingsView('category');
+      } else if (hash === '#settings-history') {
+        setConfirmDialog(null);
+        setCropImageSrc(null);
+        setFullscreenImage(null);
+        setShowAddForm(false);
+        setSelectedDetailProduct(null);
+        if (settingsView !== 'history') setSettingsView('history');
+      } else if (hash === '#settings-apikey') {
+        setConfirmDialog(null);
+        setCropImageSrc(null);
+        setFullscreenImage(null);
+        setShowAddForm(false);
+        setSelectedDetailProduct(null);
+        if (settingsView !== 'apikey') setSettingsView('apikey');
+      } else if (hash === '#add') {
+        setConfirmDialog(null);
+        setCropImageSrc(null);
+        setFullscreenImage(null);
+        setSelectedDetailProduct(null);
+      } else if (hash === '#detail') {
+        setConfirmDialog(null);
+        setCropImageSrc(null);
+        setFullscreenImage(null);
+        setShowAddForm(false);
       }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [showAddForm, selectedDetailProduct, fullscreenImage, cropImageSrc, confirmDialog, currentTab, settingsView]);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [settingsView]);
 
   // --- Side Effects & Persistence ---
   useEffect(() => {
