@@ -39,7 +39,8 @@ import {
 } from 'lucide-react';
 import { Category, Product, ProductInstance } from './types';
 import { INITIAL_CATEGORIES, INITIAL_PRODUCTS } from './data';
-import Cropper from 'react-easy-crop';
+import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { 
   calculateDaysToExpiry, 
   calculatePaoExpiry, 
@@ -47,33 +48,46 @@ import {
 } from './utils';
 
 // Helper function to extract cropped image as base64
-const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<string> => {
-  const image = new Image();
-  image.src = imageSrc;
-  await new Promise((resolve) => {
-    image.onload = resolve;
-  });
-
+const getCroppedImg = async (image: HTMLImageElement, crop: PixelCrop): Promise<string> => {
   const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  
   const ctx = canvas.getContext('2d');
-
   if (!ctx) {
     throw new Error('No 2d context');
   }
 
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  const cropWidth = crop.width * scaleX;
+  const cropHeight = crop.height * scaleY;
+  
+  const MAX_SIZE = 500;
+  let targetWidth = cropWidth;
+  let targetHeight = cropHeight;
+
+  if (targetWidth > MAX_SIZE || targetHeight > MAX_SIZE) {
+    if (targetWidth > targetHeight) {
+      targetHeight = (MAX_SIZE / targetWidth) * targetHeight;
+      targetWidth = MAX_SIZE;
+    } else {
+      targetWidth = (MAX_SIZE / targetHeight) * targetWidth;
+      targetHeight = MAX_SIZE;
+    }
+  }
+
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
 
   ctx.drawImage(
     image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    cropWidth,
+    cropHeight,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    targetWidth,
+    targetHeight
   );
 
   return canvas.toDataURL('image/jpeg', 0.8);
@@ -323,9 +337,9 @@ function MainApp({ user }: { user: User }) {
   // Cropper States
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [isCroppingFormPhoto, setIsCroppingFormPhoto] = useState(false);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<PixelCrop | null>(null);
+  const [imageRef, setImageRef] = useState<HTMLImageElement | null>(null);
 
   const askConfirmation = (title: string, message: string, onConfirm: () => void) => {
     setConfirmDialog({ title, message, onConfirm });
@@ -522,15 +536,28 @@ function MainApp({ user }: { user: User }) {
     }
   };
 
-  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
+  const onCropComplete = (crop: PixelCrop) => {
+    setCroppedAreaPixels(crop);
+  };
+  
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    setImageRef(e.currentTarget);
+    const { width, height } = e.currentTarget;
+    setCrop({
+      unit: '%',
+      x: 10,
+      y: 10,
+      width: 80,
+      height: 80
+    });
   };
 
   const handleCropConfirm = async () => {
     if (!cropImageSrc || !croppedAreaPixels) return;
     
     try {
-      const croppedBase64 = await getCroppedImg(cropImageSrc, croppedAreaPixels);
+      if (!imageRef) return;
+      const croppedBase64 = await getCroppedImg(imageRef, croppedAreaPixels);
       
       // Close cropper modal
       setCropImageSrc(null);
@@ -3194,46 +3221,39 @@ ${categoryOptions}
 
       {/* ==================== Image Cropper Modal ==================== */}
       {cropImageSrc && (
-        <div className="fixed inset-0 bg-stone-900/95 backdrop-blur-md z-[120] flex flex-col items-center justify-center animate-fade-in">
-          <div className="relative w-full h-[60vh] sm:h-[70vh] bg-black">
-            <Cropper
-              image={cropImageSrc}
+        <div className="fixed inset-0 bg-stone-900/95 backdrop-blur-md z-[120] flex flex-col items-center justify-center animate-fade-in p-4 overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-black rounded-lg overflow-hidden flex flex-col items-center justify-center min-h-[400px]">
+            <ReactCrop
               crop={crop}
-              zoom={zoom}
-              aspect={1}
-              onCropChange={setCrop}
-              onCropComplete={onCropComplete}
-              onZoomChange={setZoom}
-            />
+              onChange={(c) => setCrop(c)}
+              onComplete={onCropComplete}
+              className="max-h-[60vh] max-w-full"
+            >
+              <img 
+                src={cropImageSrc} 
+                onLoad={onImageLoad} 
+                className="max-h-[60vh] object-contain"
+                alt="Crop" 
+              />
+            </ReactCrop>
           </div>
           <div className="p-6 w-full max-w-md space-y-4">
-            <div className="flex items-center gap-4 text-white">
-              <span className="text-sm font-medium whitespace-nowrap">縮放</span>
-              <input
-                type="range"
-                value={zoom}
-                min={1}
-                max={3}
-                step={0.1}
-                aria-labelledby="Zoom"
-                onChange={(e) => {
-                  setZoom(Number(e.target.value))
-                }}
-                className="flex-1 accent-retro-primary"
-              />
-            </div>
             <div className="flex gap-4">
-              <button 
-                className="flex-1 py-3 rounded-xl border border-white/20 text-white font-bold tracking-wider hover:bg-white/10 transition-colors"
-                onClick={handleCropCancel}
+              <button
+                onClick={() => {
+                  setCropImageSrc(null);
+                  setCroppedAreaPixels(null);
+                  setImageRef(null);
+                }}
+                className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-extrabold text-sm rounded-xl transition-colors cursor-pointer"
               >
                 取消
               </button>
-              <button 
-                className="flex-1 py-3 rounded-xl bg-retro-primary text-white font-bold tracking-wider hover:brightness-110 transition-all shadow-lg"
+              <button
                 onClick={handleCropConfirm}
+                className="flex-1 py-3 bg-retro-primary hover:opacity-90 text-retro-card font-extrabold text-sm rounded-xl transition-all shadow-sm cursor-pointer"
               >
-                確認裁切
+                確定剪裁
               </button>
             </div>
           </div>
