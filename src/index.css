@@ -47,7 +47,7 @@ body {
 [data-theme="pixel"] .bg-white,
 [data-theme="pixel"] .bg-retro-card,
 [data-theme="pixel"] .bg-retro-bg\/30 {
-  border: 2px solid var(--theme-text) !important;
+  border: 1px solid var(--theme-text) !important;
 }
 
 [data-theme="pixel"] .shadow-sm,
@@ -56,12 +56,12 @@ body {
 [data-theme="pixel"] .shadow-lg,
 [data-theme="pixel"] .shadow-xl,
 [data-theme="pixel"] button {
-  box-shadow: 3px 3px 0px var(--theme-text) !important;
+  box-shadow: 2px 2px 0px var(--theme-text) !important;
   transition: transform 0.1s, box-shadow 0.1s !important;
 }
 
 [data-theme="pixel"] button:active {
-  transform: translate(3px, 3px) !important;
+  transform: translate(2px, 2px) !important;
   box-shadow: 0px 0px 0px var(--theme-text) !important;
 }
 
@@ -74,12 +74,12 @@ body {
 [data-theme="pixel"] .border,
 [data-theme="pixel"] .border-b,
 [data-theme="pixel"] .border-t {
-  border-width: 2px !important;
+  border-width: 1px !important;
 }
 
 [data-theme="pixel"] input,
 [data-theme="pixel"] select {
-  box-shadow: 2px 2px 0px var(--theme-text) !important;
+  box-shadow: 1px 1px 0px var(--theme-text) !important;
 }
 
 [data-theme="pixel"] .backdrop-blur-sm,

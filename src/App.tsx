@@ -493,6 +493,11 @@ function MainApp({ user }: { user: User }) {
     setIsAnalyzing(true);
     setAiStatusText('正在上傳並解析圖片...');
 
+    // Build category options string
+    const categoryOptions = categories.map(c => 
+      `- ${c.name} (id: ${c.id}), 子分類: ${c.subcategories.join(', ')}`
+    ).join('\n');
+
     try {
       const base64String = base64Data.split(',')[1];
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
@@ -501,7 +506,19 @@ function MainApp({ user }: { user: User }) {
         contents: [{
           role: "user",
           parts: [
-            { text: "分析此化妝品/保養品/商品圖片，辨識出品牌名稱（brand）與產品全名（name），並判斷類別（category）。如果商品名稱不是中文（如日文、英文、韓文等），請將產品全名（name）翻譯成繁體中文。回傳嚴格的 JSON 格式，包含三個 key: 'brand' (字串), 'name' (字串), 'category' (字串，請從現有的分類推測，盡量回傳英文id如 makeup, skincare, supplement)。只回傳純 JSON 內容即可，不要包裝 markdown 三個反引號。" },
+            { text: `分析此化妝品/保養品/商品圖片，辨識出品牌名稱（brand）與產品全名（name），並判斷最合適的主類別（category）與子分類（subcategory）。
+如果商品名稱不是中文（如日文、英文、韓文等），請將產品全名（name）翻譯成繁體中文。
+
+請從以下現有分類中，挑選出最適合此產品的主類別 id 與子分類名稱：
+${categoryOptions}
+
+回傳嚴格的 JSON 格式，包含四個 key: 
+'brand' (字串)
+'name' (字串)
+'category' (字串，主分類 id)
+'subcategory' (字串，子分類名稱)
+
+只回傳純 JSON 內容即可，不要包裝 markdown 三個反引號。` },
             { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64String } }
           ]
         }],
@@ -532,6 +549,10 @@ function MainApp({ user }: { user: User }) {
           setFormCategory(matchCat.id);
         } else {
           setFormCategory(categories[0]?.id || 'makeup');
+        }
+
+        if (data.subcategory) {
+          setFormSubcategory(data.subcategory);
         }
 
         setFormPhoto(base64Data);
@@ -577,6 +598,11 @@ function MainApp({ user }: { user: User }) {
 
     setIsSearchingAi(true);
 
+    // Build category options string
+    const categoryOptions = categories.map(c => 
+      `- ${c.name} (id: ${c.id}), 子分類: ${c.subcategories.join(', ')}`
+    ).join('\n');
+
     // Try with Google Search tool first
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiApiKey}`;
@@ -586,10 +612,15 @@ function MainApp({ user }: { user: User }) {
             text: `你是一個專業的化妝品與保養品資料庫助理。
 請針對使用者輸入的產品關鍵字 "${keyword}" 進行 Google 網路搜尋，尋找其對應的「官方中文/英文品牌名稱」與「官方完整產品全名」（例如：輸入「怪獸唇膏」應帶出品牌「KATE」、產品名「凱婷怪獸級持色唇膏」）。
 
+並請從以下現有分類中，挑選出最適合此產品的分類：
+${categoryOptions}
+
 請將網路搜尋得到的確切資訊，以下列嚴格的 JSON 格式回傳：
 {
   "brand": "官方品牌中文或英文名稱 (例如 KATE、Dior、雅詩蘭黛、凱婷)",
-  "name": "官方完整產品名稱 (例如 凱婷怪獸級持色唇膏、迪奧精萃再生玫瑰微導粉底)"
+  "name": "官方完整產品名稱 (例如 凱婷怪獸級持色唇膏、迪奧精萃再生玫瑰微導粉底)",
+  "category": "選出的主分類 id (例如 makeup)",
+  "subcategory": "選出的子分類名稱 (例如 唇膏)"
 }
 
 請務必使用 Google 搜尋工具。
@@ -623,6 +654,12 @@ function MainApp({ user }: { user: User }) {
         const data = JSON.parse(cleaned);
         if (data.brand) setFormBrand(data.brand);
         if (data.name) setFormName(data.name);
+        if (data.category && categories.find(c => c.id === data.category)) {
+          setFormCategory(data.category);
+        }
+        if (data.subcategory) {
+          setFormSubcategory(data.subcategory);
+        }
         showToast('品名網搜補全完成！');
         return;
       }
@@ -639,10 +676,15 @@ function MainApp({ user }: { user: User }) {
             text: `你是一個專業的化妝品與保養品資料庫助理。
 請針對產品關鍵字 "${keyword}"，根據你的知識庫，查出其對應的「官方中文/英文品牌名稱」與「官方完整產品全名」（例如：輸入「怪獸唇膏」應帶出品牌「KATE」、產品名「凱婷怪獸級持色唇膏」）。
 
+並請從以下現有分類中，挑選出最適合此產品的分類：
+${categoryOptions}
+
 請將正確的資訊，以下列嚴格的 JSON 格式回傳：
 {
   "brand": "官方品牌中文或英文名稱 (例如 KATE、Dior、雅詩蘭黛、凱婷)",
-  "name": "官方完整產品名稱 (例如 凱婷怪獸級持色唇膏、迪奧精萃再生玫瑰微導粉底)"
+  "name": "官方完整產品名稱 (例如 凱婷怪獸級持色唇膏、迪奧精萃再生玫瑰微導粉底)",
+  "category": "選出的主分類 id (例如 makeup)",
+  "subcategory": "選出的子分類名稱 (例如 唇膏)"
 }
 
 不要回傳任何額外的 Markdown 標籤、註解或說明文字。只回傳 JSON 格式字串。`
@@ -674,6 +716,12 @@ function MainApp({ user }: { user: User }) {
         const data = JSON.parse(cleaned);
         if (data.brand) setFormBrand(data.brand);
         if (data.name) setFormName(data.name);
+        if (data.category && categories.find(c => c.id === data.category)) {
+          setFormCategory(data.category);
+        }
+        if (data.subcategory) {
+          setFormSubcategory(data.subcategory);
+        }
         showToast('品名 AI 補全完成！');
       } else {
         showToast('未搜尋到更完整的產品資訊。');
@@ -886,6 +934,11 @@ function MainApp({ user }: { user: User }) {
       showToast('請輸入產品名稱！');
       return;
     }
+    
+    if (formQty < 1) {
+      showToast('數量必須大於0！');
+      return;
+    }
 
     let subcatValue = formSubcategory.trim();
     if (subcatValue === '自訂子分類' || !subcatValue) {
@@ -941,11 +994,12 @@ function MainApp({ user }: { user: User }) {
             return { ...prod, instances: filteredInstances };
           } else {
             // In-place update of instance
-            const updatedInstances = prod.instances.map(inst => {
+            const updatedInstances = prod.instances.flatMap(inst => {
               if (inst.id === editingInstanceId) {
-                return {
+                return Array.from({ length: formQty }).map((_, idx) => ({
                   ...inst,
-                  qty: formQty,
+                  id: idx === 0 ? inst.id : `inst_${Date.now()}_${idx}`,
+                  qty: 1,
                   capacity: finalCapacity,
                   usage: formUsage,
                   expiry: formExpiry,
@@ -955,9 +1009,9 @@ function MainApp({ user }: { user: User }) {
                   purchaseDate: purchaseDateVal,
                   purchasePlace: purchasePlaceVal,
                   price: priceVal
-                };
+                }));
               }
-              return inst;
+              return [inst];
             });
             return {
               ...prod,
@@ -987,9 +1041,9 @@ function MainApp({ user }: { user: User }) {
           p.status === 'active'
         );
 
-        const newInstance: ProductInstance = {
-          id: editingInstanceId,
-          qty: formQty,
+        const newInstances: ProductInstance[] = Array.from({ length: formQty }).map((_, idx) => ({
+          id: idx === 0 ? editingInstanceId : `inst_${Date.now()}_${idx}`,
+          qty: 1,
           capacity: finalCapacity,
           usage: formUsage,
           expiry: formExpiry,
@@ -999,13 +1053,13 @@ function MainApp({ user }: { user: User }) {
           purchaseDate: purchaseDateVal,
           purchasePlace: purchasePlaceVal,
           price: priceVal
-        };
+        }));
 
         if (matchProd) {
           const matchIndex = updatedProducts.findIndex(p => p.id === matchProd.id);
           updatedProducts[matchIndex] = {
             ...matchProd,
-            instances: [...matchProd.instances, newInstance],
+            instances: [...matchProd.instances, ...newInstances],
             photo: formPhoto || matchProd.photo
           };
           targetProdId = matchProd.id;
@@ -1019,7 +1073,7 @@ function MainApp({ user }: { user: User }) {
             photo: formPhoto || undefined,
             status: 'active',
             threshold: Number(formThreshold) || 0,
-            instances: [newInstance]
+            instances: newInstances
           };
           updatedProducts.push(newProduct);
           targetProdId = newProduct.id;
@@ -1032,9 +1086,9 @@ function MainApp({ user }: { user: User }) {
       showToast('明細修改成功！');
     } else {
       // C. Create New Product Group or Add Instance to Existing
-      const newInstance: ProductInstance = {
-        id: `inst_${Date.now()}`,
-        qty: formQty,
+      const newInstances: ProductInstance[] = Array.from({ length: formQty }).map((_, idx) => ({
+        id: `inst_${Date.now()}_${idx}`,
+        qty: 1,
         capacity: finalCapacity,
         usage: formUsage,
         expiry: formExpiry,
@@ -1044,7 +1098,7 @@ function MainApp({ user }: { user: User }) {
         purchaseDate: purchaseDateVal,
         purchasePlace: purchasePlaceVal,
         price: priceVal
-      };
+      }));
 
       let existingProductIndex = -1;
       if ((isAddingInstanceToExisting || forceAsNewInstance) && editingProductId) {
@@ -1063,7 +1117,7 @@ function MainApp({ user }: { user: User }) {
         const updated = [...products];
         updated[existingProductIndex] = {
           ...updated[existingProductIndex],
-          instances: [...updated[existingProductIndex].instances, newInstance]
+          instances: [...updated[existingProductIndex].instances, ...newInstances]
         };
         if (formPhoto) {
           updated[existingProductIndex].photo = formPhoto;
@@ -1087,7 +1141,7 @@ function MainApp({ user }: { user: User }) {
           photo: formPhoto || undefined,
           status: 'active',
           threshold: Number(formThreshold) || 0,
-          instances: [newInstance]
+          instances: newInstances
         };
         setProducts([...products, newProd]);
         setExpandedProductIds(prev => {
@@ -1701,17 +1755,16 @@ function MainApp({ user }: { user: User }) {
 
               {/* ====== INSTANCE PRODUCT FIELDS ====== */}
               {!isEditingMaster && (
-                <div className={`space-y-4 ${!editingInstanceId && !isAddingInstanceToExisting ? 'pt-4 mt-4 border-t border-retro-text/10' : ''}`}>
+                <div className="space-y-4">
                   {/* Quantity and Capacity */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-retro-text/75 mb-1">數量</label>
                   <input 
                     type="number" 
-                    min="1"
                     placeholder="例如: 1"
-                    value={formQty}
-                    onChange={(e) => setFormQty(Math.max(1, parseInt(e.target.value) || 1))}
+                    value={formQty === 0 ? '' : formQty}
+                    onChange={(e) => setFormQty(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                   />
                 </div>
@@ -1759,7 +1812,7 @@ function MainApp({ user }: { user: User }) {
 
               {/* Requirement 3: Period After Opening (PAO) & Opening Date fields */}
               {(formUsage === '使用中' || formUsage === '已用完' || formUsage === '已丟棄') && (
-                <div className="grid grid-cols-2 gap-3 bg-retro-bg/30 p-3 rounded-xl border border-retro-text/5">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
                       <Calendar className="w-3.5 h-3.5" />
@@ -1769,7 +1822,7 @@ function MainApp({ user }: { user: User }) {
                       type="date" 
                       value={formOpenedDate}
                       onChange={(e) => setFormOpenedDate(e.target.value)}
-                      className="w-full p-2 bg-white border border-retro-text/10 rounded-lg text-xs text-retro-text focus:outline-none focus:border-retro-primary font-semibold"
+                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                     />
                   </div>
                   {formUsage === '使用中' ? (
@@ -1784,7 +1837,7 @@ function MainApp({ user }: { user: User }) {
                         placeholder="例如: 6, 12, 24"
                         value={formPaoMonths}
                         onChange={(e) => setFormPaoMonths(e.target.value)}
-                        className="w-full p-2 bg-white border border-retro-text/10 rounded-lg text-xs text-retro-text focus:outline-none focus:border-retro-primary font-semibold"
+                        className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                       />
                     </div>
                   ) : (
@@ -1797,7 +1850,7 @@ function MainApp({ user }: { user: User }) {
                         type="date" 
                         value={formFinishedDate}
                         onChange={(e) => setFormFinishedDate(e.target.value)}
-                        className="w-full p-2 bg-white border border-retro-text/10 rounded-lg text-xs text-retro-text focus:outline-none focus:border-retro-primary font-semibold"
+                        className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                       />
                     </div>
                   )}
@@ -1816,7 +1869,7 @@ function MainApp({ user }: { user: User }) {
               </div>
 
               {/* Purchase Records Fields (Requirement 1 - purchase details inputs) */}
-              <div className="bg-stone-50/50 p-3.5 rounded-xl border border-retro-text/5 space-y-3">
+              <div className="space-y-3">
                 <span className="text-xs font-extrabold text-retro-primary/80 uppercase tracking-wider block">
                   🛒 購買與價格紀錄 (選填)
                 </span>
@@ -1962,14 +2015,14 @@ function MainApp({ user }: { user: User }) {
                       </div>
                       <span className="font-bold text-retro-text text-sm">視覺風格設定</span>
                     </div>
-                    <div className="flex bg-retro-bg/30 p-1 rounded-xl">
+                    <div className="flex gap-2">
                       <button 
                         onClick={() => handleThemeChange('retro')}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appTheme === 'retro' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                        className={`flex-1 py-2.5 text-sm font-bold rounded-xl border transition-all cursor-pointer ${appTheme === 'retro' ? 'border-retro-primary bg-retro-primary/10 text-retro-primary shadow-sm' : 'border-retro-text/10 bg-white text-retro-text/50 hover:text-retro-text hover:border-retro-text/20'}`}
                       >復古風</button>
                       <button 
                         onClick={() => handleThemeChange('pixel')}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appTheme === 'pixel' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                        className={`flex-1 py-2.5 text-sm font-bold rounded-xl border transition-all cursor-pointer ${appTheme === 'pixel' ? 'border-retro-primary bg-retro-primary/10 text-retro-primary shadow-sm' : 'border-retro-text/10 bg-white text-retro-text/50 hover:text-retro-text hover:border-retro-text/20'}`}
                       >像素風</button>
                     </div>
                   </div>
@@ -1981,23 +2034,23 @@ function MainApp({ user }: { user: User }) {
                       </div>
                       <span className="font-bold text-retro-text text-sm">字體大小設定</span>
                     </div>
-                    <div className="flex bg-retro-bg/30 p-1 rounded-xl">
+                    <div className="flex gap-2">
                       <button 
                         onClick={() => handleFontSizeChange('small')}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appFontSize === 'small' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                        className={`flex-1 py-2.5 text-sm font-bold rounded-xl border transition-all cursor-pointer ${appFontSize === 'small' ? 'border-retro-primary bg-retro-primary/10 text-retro-primary shadow-sm' : 'border-retro-text/10 bg-white text-retro-text/50 hover:text-retro-text hover:border-retro-text/20'}`}
                       >小</button>
                       <button 
                         onClick={() => handleFontSizeChange('medium')}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appFontSize === 'medium' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                        className={`flex-1 py-2.5 text-sm font-bold rounded-xl border transition-all cursor-pointer ${appFontSize === 'medium' ? 'border-retro-primary bg-retro-primary/10 text-retro-primary shadow-sm' : 'border-retro-text/10 bg-white text-retro-text/50 hover:text-retro-text hover:border-retro-text/20'}`}
                       >中</button>
                       <button 
                         onClick={() => handleFontSizeChange('large')}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${appFontSize === 'large' ? 'bg-white shadow-sm text-retro-primary' : 'text-retro-text/50 hover:text-retro-text'}`}
+                        className={`flex-1 py-2.5 text-sm font-bold rounded-xl border transition-all cursor-pointer ${appFontSize === 'large' ? 'border-retro-primary bg-retro-primary/10 text-retro-primary shadow-sm' : 'border-retro-text/10 bg-white text-retro-text/50 hover:text-retro-text hover:border-retro-text/20'}`}
                       >大</button>
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-retro-text/10 mt-4">
+                  <div className="mt-6">
                     <button onClick={logOut} className="w-full p-4 bg-red-50 border border-red-100 rounded-2xl shadow-sm hover:border-red-200 transition-all flex items-center justify-center group cursor-pointer">
                       <span className="font-bold text-red-600 text-sm">登出帳號</span>
                     </button>
@@ -2598,10 +2651,10 @@ function MainApp({ user }: { user: User }) {
                       const pao = calculatePaoExpiry(inst.openedDate, inst.paoMonths);
 
                       return (
-                        <div key={inst.id} className="p-3 bg-white border border-retro-text/5 rounded-xl space-y-2 shadow-xs">
+                        <div key={inst.id} className="p-3 bg-white rounded-xl space-y-2 shadow-xs">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-retro-text bg-retro-bg/40 border border-retro-text/5 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                              <span className="text-xs font-bold text-retro-text bg-retro-bg/40 px-2 py-0.5 rounded-lg flex items-center gap-1">
                                 <Package className="w-3 h-3 text-retro-primary" />
                                 {inst.qty} 件
                               </span>
@@ -2616,7 +2669,7 @@ function MainApp({ user }: { user: User }) {
 
                             {/* Instance edit/archive buttons */}
                             {selectedDetailProduct.status !== 'archived' && (
-                              <div className="flex items-center gap-2 bg-stone-50 border border-retro-text/5 rounded-lg px-2 py-0.5">
+                              <div className="flex items-center gap-2 bg-stone-50 rounded-lg px-2 py-0.5">
                                 <button 
                                   onClick={() => {
                                     handleEditInstanceTrigger(selectedDetailProduct, inst);
@@ -2649,7 +2702,7 @@ function MainApp({ user }: { user: User }) {
 
                           {/* PAO Expiry / Date Details */}
                           {/* PAO Expiry / Date Details Grid */}
-                          <div className="rounded-xl border border-retro-text/10 overflow-hidden bg-stone-50/50 mt-2">
+                          <div className="rounded-xl overflow-hidden bg-stone-50/50 mt-2">
                             {/* Row 1: Expiry */}
                             <div className="grid grid-cols-3 divide-x divide-retro-text/10 border-b border-retro-text/10 bg-retro-bg/30 text-[10px] font-bold text-retro-text/60">
                               <div className="px-3 py-1.5 flex items-center">數量 / 容量</div>
@@ -3015,7 +3068,7 @@ function ProductCard({
   return (
     <div 
       onClick={() => onViewDetail(product)}
-      className={`p-4 rounded-2xl flex items-center justify-between bg-white border border-retro-text/5 hover:border-retro-primary/30 shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.99] group relative ${isArchived ? 'opacity-60 grayscale' : ''}`}
+      className={`p-4 rounded-2xl flex items-center justify-between bg-white border border-transparent hover:border-retro-primary/30 shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.99] group relative ${isArchived ? 'opacity-60 grayscale' : ''}`}
       title="點擊進入商品完整畫面"
     >
       <div className="flex gap-3.5 items-center min-w-0 flex-1">
