@@ -1020,6 +1020,7 @@ ${categoryOptions}
   const handleTabChange = (tabId: string) => {
     setCurrentTab(tabId);
     setShowAddForm(false);
+    setSearchKeyword('');
     clearForm();
     if (tabId === 'settings') {
       setSettingsView('menu');
@@ -1480,7 +1481,18 @@ ${categoryOptions}
 
   // --- Search Filtering Helper ---
   const activeProducts = products.filter(prod => {
-    // Check if category is active
+    if (searchKeyword.trim()) {
+      if (prod.status !== 'active') return false;
+      const term = searchKeyword.toLowerCase();
+      const catName = categories.find(c => c.id === prod.category)?.name || '';
+      return (
+        prod.brand.toLowerCase().includes(term) ||
+        prod.name.toLowerCase().includes(term) ||
+        prod.subcategory.toLowerCase().includes(term) ||
+        catName.toLowerCase().includes(term)
+      );
+    }
+
     if (currentTab === 'history') {
       if (prod.status !== 'archived') return false;
     } else {
@@ -1488,14 +1500,7 @@ ${categoryOptions}
       if (prod.category !== currentTab) return false;
     }
 
-    if (!searchKeyword.trim()) return true;
-    
-    const term = searchKeyword.toLowerCase();
-    return (
-      prod.brand.toLowerCase().includes(term) ||
-      prod.name.toLowerCase().includes(term) ||
-      prod.subcategory.toLowerCase().includes(term)
-    );
+    return true;
   });
 
   // Calculate statistics for header and category subheaders
@@ -1636,24 +1641,26 @@ ${categoryOptions}
         )}
 
         {/* 3. Search Bar */}
-        <div className="relative mb-5">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-retro-text/40 w-4.5 h-4.5" />
-          <input 
-            type="text" 
-            placeholder="搜尋品牌、產品或小分類..."
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-retro-card rounded-2xl text-sm border border-retro-text/5 focus:outline-none focus:ring-1 focus:ring-retro-primary shadow-inner text-retro-text font-medium"
-          />
-          {searchKeyword && (
-            <button 
-              onClick={() => setSearchKeyword('')} 
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-retro-text/50 hover:text-retro-text p-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        {currentTab !== 'settings' && (
+          <div className="relative mb-5">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-retro-text/40 w-4.5 h-4.5" />
+            <input 
+              type="text" 
+              placeholder="搜尋品牌、產品或小分類..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-retro-card rounded-2xl text-sm border border-retro-text/5 focus:outline-none focus:ring-1 focus:ring-retro-primary shadow-inner text-retro-text font-medium"
+            />
+            {searchKeyword && (
+              <button 
+                onClick={() => setSearchKeyword('')} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-retro-text/50 hover:text-retro-text p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 4. Dynamic AI Status Loading Overlay */}
         {isAnalyzing && (
@@ -2456,20 +2463,62 @@ ${categoryOptions}
           /* =================== MAIN LIST VIEW =================== */
           <div className="space-y-4">
             {/* Category Stats Indicator */}
-            <div className="flex justify-between items-center mb-1 bg-retro-card/40 px-3.5 py-2.5 rounded-xl border border-retro-text/5 text-xs text-retro-text">
-              <span className="font-bold text-retro-text/80">
-                分類：{categories.find(c => c.id === currentTab)?.name || ''}
-              </span>
-              <span className="font-semibold text-retro-text/70 flex items-center gap-1">
-                <span>共 {getCategoryStats(currentTab).count} 品項</span>
-                <span className="text-retro-text/30">|</span>
-                <Package className="w-3.5 h-3.5 text-retro-primary" />
-                <span>總庫存 {getCategoryStats(currentTab).qty}</span>
-              </span>
-            </div>
+            {!searchKeyword.trim() ? (
+              <div className="flex justify-between items-center mb-1 bg-retro-card/40 px-3.5 py-2.5 rounded-xl border border-retro-text/5 text-xs text-retro-text">
+                <span className="font-bold text-retro-text/80">
+                  分類：{categories.find(c => c.id === currentTab)?.name || ''}
+                </span>
+                <span className="font-semibold text-retro-text/70 flex items-center gap-1">
+                  <span>共 {getCategoryStats(currentTab).count} 品項</span>
+                  <span className="text-retro-text/30">|</span>
+                  <Package className="w-3.5 h-3.5 text-retro-primary" />
+                  <span>總庫存 {getCategoryStats(currentTab).qty}</span>
+                </span>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center mb-1 bg-retro-card/40 px-3.5 py-2.5 rounded-xl border border-retro-text/5 text-xs text-retro-text">
+                <span className="font-bold text-retro-text/80">
+                  搜尋結果
+                </span>
+                <span className="font-semibold text-retro-text/70 flex items-center gap-1">
+                  <span>共 {activeProducts.length} 品項</span>
+                  <span className="text-retro-text/30">|</span>
+                  <Package className="w-3.5 h-3.5 text-retro-primary" />
+                  <span>總庫存 {activeProducts.reduce((sum, p) => sum + p.instances.reduce((s, i) => s + i.qty, 0), 0)}</span>
+                </span>
+              </div>
+            )}
 
             {/* Subcategory Nested Product List */}
             {(() => {
+              // If searching, render flat list
+              if (searchKeyword.trim()) {
+                if (activeProducts.length === 0) {
+                  return (
+                    <div className="text-center py-12 bg-retro-card rounded-2xl border border-retro-text/10">
+                      <p className="text-sm text-retro-text/50 font-semibold">尚無符合的商品</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-3">
+                    {activeProducts.map(prod => (
+                      <div key={prod.id}>
+                        <ProductCard 
+                          product={prod} 
+                          onViewDetail={setSelectedDetailProduct}
+                          onEdit={handleEditInstanceTrigger}
+                          onArchive={handleArchiveInstance}
+                          onAddAnother={handleAddAnotherInstanceTrigger}
+                          onImageClick={setFullscreenImage}
+                          categoryIcon={categories.find(c => c.id === prod.category)?.icon || 'sparkles'}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
               // Get subcategories of current category
               const currentCatObj = categories.find(c => c.id === currentTab);
               
@@ -3220,11 +3269,6 @@ function ProductCard({
               <Package className="w-3 h-3 text-retro-primary" />
               共 {totalQty} 件
             </span>
-            {instances.length > 1 && (
-              <span className="text-[10px] font-semibold text-retro-secondary bg-retro-secondary/5 px-2 py-0.5 rounded-full">
-                {instances.length} 種規格
-              </span>
-            )}
           </div>
         </div>
       </div>
