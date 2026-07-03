@@ -313,7 +313,7 @@ function MainApp({ user }: { user: User }) {
   const [formQty, setFormQty] = useState(1);
   const [formCapacity, setFormCapacity] = useState('');
   const [formCapacityUnit, setFormCapacityUnit] = useState('ml');
-  const [formUsage, setFormUsage] = useState<'使用中' | '未開封' | '已用完' | '已丟棄'>('使用中');
+  const [formUsage, setFormUsage] = useState<'使用中' | '未開封' | '已用完' | '已丟棄'>('未開封');
   const [formThreshold, setFormThreshold] = useState<number | string>(0);
   const [formExpiry, setFormExpiry] = useState('');
   const [formPaoMonths, setFormPaoMonths] = useState<string>(''); // PAO 可使用月數
@@ -713,7 +713,7 @@ ${categoryOptions}
         setFormQty(1);
         setFormCapacity('');
         setFormCapacityUnit('ml');
-        setFormUsage('使用中');
+        setFormUsage('未開封');
         setFormThreshold(0);
         setFormExpiry('');
         setFormPaoMonths('');
@@ -1054,7 +1054,7 @@ ${categoryOptions}
     setFormQty(1);
     setFormCapacity('');
     setFormCapacityUnit('ml');
-    setFormUsage('使用中');
+    setFormUsage('未開封');
     setFormThreshold(0);
     setFormExpiry('');
     setFormPaoMonths('');
@@ -1381,7 +1381,7 @@ ${categoryOptions}
     setFormQty(1);
     setFormCapacity('');
     setFormCapacityUnit('ml');
-    setFormUsage('使用中');
+    setFormUsage('未開封');
     setFormThreshold(0);
     setFormExpiry('');
     setFormPaoMonths('');
@@ -1983,8 +1983,9 @@ ${categoryOptions}
               </div>
 
               {/* Requirement 3: Period After Opening (PAO) & Opening Date fields */}
-              {(formUsage === '使用中' || formUsage === '已用完' || formUsage === '已丟棄') && (
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                {/* 開封日期 (只有 未開封 不顯示) */}
+                {formUsage !== '未開封' && (
                   <div>
                     <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
                       <Calendar className="w-3.5 h-3.5" />
@@ -1997,37 +1998,42 @@ ${categoryOptions}
                       className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
                     />
                   </div>
-                  {formUsage === '使用中' ? (
-                    <div>
-                      <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
-                        <ClockIcon className="w-3.5 h-3.5" />
-                        開封後可使用月數
-                      </label>
-                      <input 
-                        type="number" 
-                        min="1"
-                        placeholder="例如: 6, 12, 24"
-                        value={formPaoMonths}
-                        onChange={(e) => setFormPaoMonths(e.target.value)}
-                        className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
-                        <Calendar className="w-3.5 h-3.5" />
-                        結束日期
-                      </label>
-                      <input 
-                        type="date" 
-                        value={formFinishedDate}
-                        onChange={(e) => setFormFinishedDate(e.target.value)}
-                        className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+                
+                {/* 結束日期 (只有 已用完/已丟棄 顯示) */}
+                {(formUsage === '已用完' || formUsage === '已丟棄') && (
+                  <div>
+                    <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
+                      <Calendar className="w-3.5 h-3.5" />
+                      結束日期
+                    </label>
+                    <input 
+                      type="date" 
+                      value={formFinishedDate}
+                      onChange={(e) => setFormFinishedDate(e.target.value)}
+                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                    />
+                  </div>
+                )}
+
+                {/* PAO (未開封 或 使用中 顯示) */}
+                {(formUsage === '使用中' || formUsage === '未開封') && (
+                  <div className={formUsage === '未開封' ? 'col-span-2' : ''}>
+                    <label className="block text-xs font-bold text-retro-text/75 mb-1 flex items-center gap-1 text-retro-secondary">
+                      <ClockIcon className="w-3.5 h-3.5" />
+                      開封後可使用月數
+                    </label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      placeholder="例如: 6, 12, 24"
+                      value={formPaoMonths}
+                      onChange={(e) => setFormPaoMonths(e.target.value)}
+                      className="w-full p-2.5 bg-white/50 border border-retro-text/10 rounded-xl text-sm text-retro-text focus:outline-none focus:border-retro-primary font-medium"
+                    />
+                  </div>
+                )}
+              </div>
 
               {/* Expiration Date */}
               <div>
