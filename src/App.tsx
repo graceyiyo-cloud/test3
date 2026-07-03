@@ -2636,7 +2636,13 @@ ${categoryOptions}
                 }
                 return (
                   <div className="space-y-3">
-                    {activeProducts.map(prod => (
+                    {[...activeProducts]
+      .sort((a, b) => {
+        const aOpened = a.instances.some(i => i.usage === '使用中') ? 1 : 0;
+        const bOpened = b.instances.some(i => i.usage === '使用中') ? 1 : 0;
+        return bOpened - aOpened;
+      })
+      .map(prod => (
                       <div key={prod.id}>
                         <ProductCard 
                           product={prod} 
@@ -2699,7 +2705,13 @@ ${categoryOptions}
               return (
                 <div className="space-y-6">
                   {nonAndEmptyGroups.map(subName => {
-                    const groupProds = activeProducts.filter(p => p.subcategory === subName);
+                    const groupProds = activeProducts
+                      .filter(p => p.subcategory === subName)
+                      .sort((a, b) => {
+                        const aOpened = a.instances.some(i => i.usage === '使用中') ? 1 : 0;
+                        const bOpened = b.instances.some(i => i.usage === '使用中') ? 1 : 0;
+                        return bOpened - aOpened;
+                      });
                     const stats = getSubcategoryStats(subName, currentTab);
 
                     return (
