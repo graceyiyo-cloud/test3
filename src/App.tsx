@@ -2804,7 +2804,7 @@ ${categoryOptions}
 
                           {/* PAO Expiry / Date Details */}
                           {/* PAO Expiry / Date Details Grid */}
-                          <div className="rounded-xl overflow-hidden bg-stone-50/50 mt-2">
+                          <div className="rounded-xl overflow-hidden bg-stone-50/50 mt-2 border border-retro-text/10">
                             {/* Row 1: Expiry */}
                             <div className="grid grid-cols-3 divide-x divide-retro-text/10 border-b border-retro-text/10 bg-retro-bg/30 text-[10px] font-bold text-retro-text/60">
                               <div className="px-3 py-1.5 flex items-center">數量 / 容量</div>
@@ -2881,7 +2881,8 @@ ${categoryOptions}
                               <tr className="bg-stone-50 border-b border-retro-text/5 text-[10px] uppercase text-retro-text/50">
                                 <th className="p-2.5 font-bold whitespace-nowrap">日期</th>
                                 <th className="p-2.5 font-bold whitespace-nowrap">地點</th>
-                                <th className="p-2.5 font-bold text-right whitespace-nowrap">金額</th>
+                                <th className="p-2.5 font-bold text-center whitespace-nowrap">數量</th>
+                                <th className="p-2.5 font-bold text-right whitespace-nowrap">單價</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-retro-text/5">
@@ -2892,6 +2893,7 @@ ${categoryOptions}
                                   <tr key={inst.id} className={`text-xs text-retro-text ${inst.isArchived ? 'opacity-50 grayscale' : ''}`}>
                                     <td className="p-2.5 font-mono">{inst.purchaseDate || '-'}</td>
                                     <td className="p-2.5">{inst.purchasePlace || '-'}</td>
+                                    <td className="p-2.5 font-mono text-center">{inst.qty || '-'}</td>
                                     <td className="p-2.5 font-mono font-bold text-right text-retro-secondary">{inst.price !== undefined ? `$${inst.price}` : '-'}</td>
                                   </tr>
                                 );
