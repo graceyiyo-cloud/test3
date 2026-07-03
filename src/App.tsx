@@ -952,6 +952,43 @@ ${categoryOptions}
     e.preventDefault();
   };
 
+    const moveCatUp = (index: number) => {
+    if (index <= 0) return;
+    const newCats = [...categories];
+    [newCats[index - 1], newCats[index]] = [newCats[index], newCats[index - 1]];
+    setCategories(newCats);
+  };
+  const moveCatDown = (index: number) => {
+    if (index >= categories.length - 1) return;
+    const newCats = [...categories];
+    [newCats[index + 1], newCats[index]] = [newCats[index], newCats[index + 1]];
+    setCategories(newCats);
+  };
+
+  const moveSubCatUp = (catId: string, sIdx: number) => {
+    if (sIdx <= 0) return;
+    setCategories(categories.map(c => {
+      if (c.id === catId) {
+        const newSubs = [...c.subcategories];
+        [newSubs[sIdx - 1], newSubs[sIdx]] = [newSubs[sIdx], newSubs[sIdx - 1]];
+        return { ...c, subcategories: newSubs };
+      }
+      return c;
+    }));
+  };
+  
+  const moveSubCatDown = (catId: string, sIdx: number) => {
+    setCategories(categories.map(c => {
+      if (c.id === catId) {
+        if (sIdx >= c.subcategories.length - 1) return c;
+        const newSubs = [...c.subcategories];
+        [newSubs[sIdx + 1], newSubs[sIdx]] = [newSubs[sIdx], newSubs[sIdx + 1]];
+        return { ...c, subcategories: newSubs };
+      }
+      return c;
+    }));
+  };
+
   const handleSubDrop = (e: React.DragEvent, categoryId: string, index: number) => {
     e.preventDefault();
     if (draggedSubIdx === null || draggedSubCatId !== categoryId || draggedSubIdx === index) return;
@@ -2361,8 +2398,16 @@ ${categoryOptions}
                         className="flex items-center justify-between p-3 bg-stone-50 border-b border-stone-100 hover:bg-stone-100/50 transition-colors"
                       >
                         <div className="flex items-center gap-2">
-                          <div className="cursor-grab p-1 hover:bg-stone-200 rounded text-stone-400 active:text-stone-700">
+                          <div className="cursor-grab p-1 hover:bg-stone-200 rounded text-stone-400 active:text-stone-700 hidden sm:block">
                             <GripVertical className="w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col sm:hidden">
+                            <button onClick={(e) => { e.stopPropagation(); moveCatUp(idx); }} disabled={idx === 0} className="p-0.5 text-stone-400 hover:bg-stone-200 rounded disabled:opacity-30">
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); moveCatDown(idx); }} disabled={idx === categories.length - 1} className="p-0.5 text-stone-400 hover:bg-stone-200 rounded disabled:opacity-30">
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                           <span className="text-sm">
                             <CategoryIcon name={cat.icon} className="w-4.5 h-4.5 text-retro-primary" />
@@ -2431,8 +2476,16 @@ ${categoryOptions}
                                 className="flex items-center justify-between p-2 bg-white border border-stone-200 rounded-lg text-xs hover:bg-stone-50 transition-colors"
                               >
                                 <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
-                                  <div className="cursor-grab p-0.5 text-stone-400 hover:text-stone-600">
+                                  <div className="cursor-grab p-0.5 text-stone-400 hover:text-stone-600 hidden sm:block">
                                     <GripVertical className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div className="flex flex-col sm:hidden">
+                                    <button onClick={(e) => { e.stopPropagation(); moveSubCatUp(cat.id, sIdx); }} disabled={sIdx === 0} className="p-0.5 text-stone-400 hover:bg-stone-200 rounded disabled:opacity-30">
+                                      <ChevronUp className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); moveSubCatDown(cat.id, sIdx); }} disabled={sIdx === cat.subcategories.length - 1} className="p-0.5 text-stone-400 hover:bg-stone-200 rounded disabled:opacity-30">
+                                      <ChevronDown className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
                                   {editingSubIdx === sIdx && editingSubCatId === cat.id ? (
                                     <input 
@@ -2614,7 +2667,13 @@ ${categoryOptions}
               
               // Filter to find subcat groups that have matching active filtered products
               const nonAndEmptyGroups = allSubcatGroups.filter(subName => {
-                const groupProds = activeProducts.filter(p => p.subcategory === subName);
+                const groupProds = activeProducts
+                      .filter(p => p.subcategory === subName)
+                      .sort((a, b) => {
+                        const aOpened = a.instances.some(i => i.usage === '使用中') ? 1 : 0;
+                        const bOpened = b.instances.some(i => i.usage === '使用中') ? 1 : 0;
+                        return bOpened - aOpened;
+                      });
                 return groupProds.length > 0;
               });
 
@@ -2879,7 +2938,7 @@ ${categoryOptions}
                     <span className="text-[11px] font-extrabold text-retro-text/50 uppercase tracking-wider block">
                       📋 規格明細與狀態
                     </span>
-                    {selectedDetailProduct.instances.map((inst, index) => {
+                    {[...selectedDetailProduct.instances].sort((a, b) => (b.usage === '使用中' ? 1 : 0) - (a.usage === '使用中' ? 1 : 0)).map((inst, index) => {
                       const daysLeft = calculateDaysToExpiry(inst.expiry);
                       const isUrgent = daysLeft <= 60;
                       const pao = calculatePaoExpiry(inst.openedDate, inst.paoMonths);
